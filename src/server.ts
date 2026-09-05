@@ -13,6 +13,8 @@ import examsRoutes from './routes/exams.js';
 import predictRoutes from './routes/predict.js';
 import searchRoutes from './routes/search.js';
 import compareRoutes from './routes/compare.js';
+import statsRoutes from './routes/stats.js';
+import { config } from './config.js';
 
 export const buildServer = async () => {
   const server = fastify({ logger: false });
@@ -52,10 +54,28 @@ export const buildServer = async () => {
     routePrefix: '/docs'
   });
 
-  // Health check
+  // Health check (unauthenticated)
   server.get('/health', async () => {
     return { status: 'ok', timestamp: new Date().toISOString(), version: '1.0.0' };
   });
+
+  // RapidAPI proxy authentication (production only)
+  // This ensures requests come through RapidAPI's proxy, not directly to our server
+  if (config.NODE_ENV === 'production' && config.RAPIDAPI_PROXY_SECRET) {
+    server.addHook('onRequest', async (request, reply) => {
+      // Skip auth for health check and docs
+      if (request.url === '/health' || request.url.startsWith('/docs')) return;
+      
+      const proxySecret = request.headers['x-rapidapi-proxy-secret'];
+      if (proxySecret !== config.RAPIDAPI_PROXY_SECRET) {
+        reply.status(403).send({ 
+          success: false,
+          error: 'Access this API through RapidAPI: https://rapidapi.com/search/edusearch',
+          statusCode: 403 
+        });
+      }
+    });
+  }
 
   // API info
   server.get('/', async () => {
@@ -72,6 +92,7 @@ export const buildServer = async () => {
         predict: '/api/v1/predict',
         search: '/api/v1/search',
         compare: '/api/v1/compare?ids=1,2,3',
+        stats: '/api/v1/stats',
       }
     };
   });
@@ -84,6 +105,7 @@ export const buildServer = async () => {
   await server.register(predictRoutes);
   await server.register(searchRoutes);
   await server.register(compareRoutes);
+  await server.register(statsRoutes);
 
   server.setErrorHandler((error, request, reply) => {
     logger.error(`Error: ${error.message}`);

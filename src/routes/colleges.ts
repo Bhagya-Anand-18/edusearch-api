@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { db } from '../db/database.js';
+import { envelope, envelopeSingle } from '../utils/envelope.js';
 
 const collegesListSchema = z.object({
   type: z.enum(['IIT', 'NIT', 'IIIT', 'GFTI', 'Medical']).optional(),
@@ -72,7 +73,7 @@ export default async function(fastify: FastifyInstance) {
       
       const endTime = process.hrtime.bigint();
       reply.header('x-response-time', `${Number(endTime - startTime) / 1e6}ms`);
-      return rows;
+      return envelope(rows as any[], { limit: query.limit, offset: query.offset });
     } catch (error) {
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation Error', statusCode: 400 });
       return reply.status(500).send({ error: 'Internal Server Error', statusCode: 500 });
@@ -93,7 +94,7 @@ export default async function(fastify: FastifyInstance) {
       
       const endTime = process.hrtime.bigint();
       reply.header('x-response-time', `${Number(endTime - startTime) / 1e6}ms`);
-      return { institute, programs, nirf_rankings, placements };
+      return envelopeSingle({ institute, programs, nirf_rankings, placements });
     } catch (error) {
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation Error', statusCode: 400 });
       return reply.status(500).send({ error: 'Internal Server Error', statusCode: 500 });
@@ -118,7 +119,7 @@ export default async function(fastify: FastifyInstance) {
       
       const endTime = process.hrtime.bigint();
       reply.header('x-response-time', `${Number(endTime - startTime) / 1e6}ms`);
-      return rows;
+      return envelopeSingle(rows);
     } catch (error) {
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation Error', statusCode: 400 });
       return reply.status(500).send({ error: 'Internal Server Error', statusCode: 500 });
@@ -157,7 +158,7 @@ export default async function(fastify: FastifyInstance) {
       
       const endTime = process.hrtime.bigint();
       reply.header('x-response-time', `${Number(endTime - startTime) / 1e6}ms`);
-      return rows;
+      return envelopeSingle(rows);
     } catch (error) {
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation Error', statusCode: 400 });
       return reply.status(500).send({ error: 'Internal Server Error', statusCode: 500 });

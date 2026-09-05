@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { db } from '../db/database.js';
+import { envelopeSingle } from '../utils/envelope.js';
 
 const searchQuerySchema = z.object({
   q: z.string().min(1)
@@ -30,7 +31,7 @@ export default async function(fastify: FastifyInstance) {
       
       const endTime = process.hrtime.bigint();
       reply.header('x-response-time', `${Number(endTime - startTime) / 1e6}ms`);
-      return { institutes, programs };
+      return envelopeSingle({ institutes, programs });
     } catch (error) {
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation Error', statusCode: 400 });
       return reply.status(500).send({ error: 'Internal Server Error', statusCode: 500 });

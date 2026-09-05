@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { db } from '../db/database.js';
+import { envelope } from '../utils/envelope.js';
 
 const cutoffsQuerySchema = z.object({
   exam: z.enum(['jee_advanced', 'jee_main', 'neet']).optional(),
@@ -69,11 +70,16 @@ export default async function(fastify: FastifyInstance) {
       
       const stmt = db.prepare(sql);
       const rows = stmt.all(...params);
+
+      // Get total count (without LIMIT/OFFSET)
+      const countSql = sql.replace(/SELECT c\.\*, p\.name.*FROM/, 'SELECT COUNT(*) as total FROM').replace(/ORDER BY.*$/, '');
+      const countParams = params.slice(0, -2); // remove limit and offset
+      const totalRow = db.prepare(countSql).get(...countParams) as any;
       
       const endTime = process.hrtime.bigint();
       reply.header('x-response-time', `${Number(endTime - startTime) / 1e6}ms`);
       
-      return rows;
+      return envelope(rows as any[], { limit: query.limit, offset: query.offset, total: totalRow?.total ?? rows.length });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return reply.status(400).send({ error: 'Validation Error', details: error.errors, statusCode: 400 });

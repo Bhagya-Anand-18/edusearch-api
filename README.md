@@ -16,7 +16,7 @@ EduSearch API provides structured, queryable access to Indian education data tha
 | Endpoint | Description |
 |----------|-------------|
 | `GET /api/v1/cutoffs` | JEE Main/Advanced & NEET cutoffs with filters |
-| `GET /api/v1/colleges` | Search and filter 50+ institutes |
+| `GET /api/v1/colleges` | Search and filter 141 institutes — every IIT, NIT, IIIT and GFTI in JoSAA |
 | `GET /api/v1/colleges/:id` | Detailed college info with programs & placements |
 | `GET /api/v1/rankings/nirf` | NIRF rankings by year and category |
 | `GET /api/v1/exams/:exam/stats` | Exam statistics (registered, qualified, scores) |

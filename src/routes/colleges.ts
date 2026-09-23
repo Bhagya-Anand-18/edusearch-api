@@ -53,7 +53,7 @@ const listRouteSchema = {
   tags: ['Colleges'],
   summary: 'Search and filter institutes',
   description:
-    'Returns institutes matching the given filters, ordered by NIRF rank then name. Use it to build pickers and browse pages — for example `?type=IIT&state=Tamil Nadu` or `?nirf_rank_max=10`. The `id` on each record is what /api/v1/colleges/{id} and /api/v1/compare expect.',
+    'Returns institutes matching the given filters: ranked institutes first by NIRF rank, then unranked ones by name. Use it to build pickers and browse pages — for example `?type=IIT&state=Tamil Nadu` or `?nirf_rank_max=10`. The `id` on each record is what /api/v1/colleges/{id} and /api/v1/compare expect.',
   querystring: {
     type: 'object',
     properties: {
@@ -107,7 +107,7 @@ const placementsRouteSchema = {
   tags: ['Colleges'],
   summary: 'Get placement records for an institute',
   description:
-    'Returns placement figures — placement percentage and median, average and highest packages — for one institute, newest year first. Add `?year=` to pin a single season.',
+    'Returns placement figures — placement percentage and median, average and highest packages — for one institute, newest year first. Add `?year=` to pin a single season.\n\nPlacement figures are synthetic sample data (each record says `source: "synthetic"`) and cover 48 institutes; the rest return an empty array, which means no data rather than no placements.',
   params: idParams,
   querystring: {
     type: 'object',
@@ -190,7 +190,7 @@ export default async function(fastify: FastifyInstance) {
 
       const rows = db.prepare(`
         SELECT i.* FROM institutes i${where}
-        ORDER BY i.nirf_rank ASC, i.name ASC
+        ORDER BY (i.nirf_rank IS NULL), i.nirf_rank ASC, i.name ASC
         LIMIT ? OFFSET ?
       `).all(...params, query.limit, query.offset);
 

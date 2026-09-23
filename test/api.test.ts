@@ -51,6 +51,14 @@ test('colleges and rankings report real totals', async () => {
   assert.ok(rankings.body.meta.total > 2);
 });
 
+test('colleges list ranked institutes before unranked ones', async () => {
+  const { body } = await get('/api/v1/colleges?limit=200');
+  const ranks = body.data.map((c: any) => c.nirf_rank);
+  const firstUnranked = ranks.indexOf(null);
+  assert.ok(firstUnranked > 0, 'the list should open with ranked institutes');
+  assert.ok(ranks.slice(firstUnranked).every((r: any) => r === null), 'a ranked institute appears after an unranked one');
+});
+
 test('response schemas keep every column, including joined ones', async () => {
   const { body } = await get('/api/v1/cutoffs?limit=1');
   for (const key of ['id', 'program_id', 'exam', 'year', 'round', 'is_final_round', 'quota', 'category', 'pwd', 'gender',

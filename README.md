@@ -16,7 +16,7 @@ EduSearch API provides structured, queryable access to Indian education data tha
 | Endpoint | Description |
 |----------|-------------|
 | `GET /api/v1/cutoffs` | JEE Main/Advanced & NEET cutoffs with filters |
-| `GET /api/v1/colleges` | Search and filter 625 institutes — every JoSAA engineering institute and every MCC all-India-quota medical college |
+| `GET /api/v1/colleges` | Search and filter 613 institutes — every JoSAA engineering institute and every MCC all-India-quota medical college |
 | `GET /api/v1/colleges/:id` | Detailed college info with programs & placements |
 | `GET /api/v1/rankings/nirf` | NIRF rankings by year and category |
 | `GET /api/v1/exams/:exam/stats` | Exam statistics (registered, qualified, scores) |
@@ -105,10 +105,10 @@ so the spec advertises it instead of localhost; on Render this is picked up from
 |---|---|---|
 | JEE Advanced cutoffs | **Official** — [JoSAA archive](https://josaa.admissions.nic.in/applicant/seatmatrix/openingclosingrankarchieve.aspx) | All 23 IITs, 2022-2025, round 1 and final round, every quota, category, gender pool and PwD seat |
 | JEE Main cutoffs | **Official** — JoSAA archive | 31 NITs plus IIEST Shibpur, 26 IIITs and 47 GFTIs, same years and rounds |
-| NEET rank ranges | **Derived from official data** — [MCC allotment results](https://mcc.nic.in/archive-ug/) | 494 medical and dental colleges, 2022-2025, round 1, all-India quota and AIIMS/JIPMER open seats, MBBS and BDS |
+| NEET rank ranges | **Derived from official data** — [MCC allotment results](https://mcc.nic.in/archive-ug/) | 482 medical and dental colleges, 2022-2025, round 1, all-India quota and AIIMS/JIPMER open seats, MBBS and BDS |
 | NIRF rankings | **Official** — [nirfindia.org](https://www.nirfindia.org) | 2023-2025, engineering (top 100) and medical (top 50), with all five parameter scores, for institutes in our coverage |
-| Placements | **Official** — NIRF institute data reports | Graduates, placed, median salary and higher studies for the three latest batches per program block, 77 NIRF-ranked institutes |
-| Institutes | JoSAA, MCC, NIRF and curated metadata | 625 institutes; 1,500+ programs |
+| Placements | **Official** — NIRF institute data reports | Graduates, placed, median salary and higher studies for the three latest batches per program block (mostly graduating 2022-2024), 77 NIRF-ranked institutes |
+| Institutes | JoSAA, MCC, NIRF and curated metadata | 613 institutes; 1,500+ programs |
 | Exam statistics | Synthetic | 2025 only |
 
 **About NEET ranges.** MCC publishes who was allotted which seat, not cutoffs. The opening and closing ranks here are the best and worst all-India rank allotted to each seat group (college, course, quota, category, PwD and gender) in round 1, and carry `source: "mcc_derived"` to say so. Later rounds, where closing ranks rise further, use a different PDF layout and are not imported yet.

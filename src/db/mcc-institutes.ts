@@ -83,6 +83,8 @@ export interface Resolution {
   unresolved: string[];
   /** Renames merged in pass 3, as [earlier name, later name], for the import report. */
   renames: [string, string][];
+  /** Colleges whose PIN changed between years, merged in pass 4, as [name, PINs]. */
+  pinChanges: [string, string][];
 }
 
 /**
@@ -94,6 +96,10 @@ export interface Resolution {
  *  3. Two identities under one PIN that never appear in the same year are one
  *     college renamed ("Bahiramjee Jijibhai Medical College" became "B. J.
  *     Government Medical College"), and are merged into the later name.
+ *  4. Identities with the same name in the same state that never appear in the
+ *     same year are one college whose PIN changed (MCC printed AIIMS Jammu as
+ *     18410, 184120 and 181134 in successive years). Names shared by several
+ *     colleges in one year ("Government Medical College") never qualify.
  *  Anything still ambiguous keeps an identity of its own and is reported.
  */
 export function resolveMccIdentities(entries: { raw: string; year: number }[]): Resolution {
@@ -148,5 +154,32 @@ export function resolveMccIdentities(entries: { raw: string; year: number }[]): 
   }
   for (const [raw, key] of keys) if (redirect.has(key)) keys.set(raw, redirect.get(key)!);
 
-  return { keys, unresolved, renames };
+  // Pass 4: PIN changes under one name.
+  const facts = new Map<string, { nameKey: string; years: Set<number>; states: Set<string>; pins: Set<string> }>();
+  for (const { raw, year } of entries) {
+    const key = keys.get(raw)!;
+    const p = parsed.get(raw)!;
+    const f = facts.get(key) ?? { nameKey: key.split('|')[0], years: new Set(), states: new Set(), pins: new Set() };
+    f.years.add(year);
+    if (p.state) f.states.add(p.state);
+    if (p.pin) f.pins.add(p.pin);
+    facts.set(key, f);
+  }
+  const byName = new Map<string, string[]>();
+  for (const [key, f] of facts) byName.set(f.nameKey, [...(byName.get(f.nameKey) ?? []), key]);
+  const pinChanges: [string, string][] = [];
+  for (const group of byName.values()) {
+    if (group.length < 2) continue;
+    const years = group.flatMap((k) => [...facts.get(k)!.years]);
+    if (new Set(years).size !== years.length) continue; // two of them coexisted in some year
+    const states = new Set(group.flatMap((k) => [...facts.get(k)!.states]));
+    if (states.size > 1) continue;
+    const latest = group.reduce((a, b) => (Math.max(...facts.get(a)!.years) > Math.max(...facts.get(b)!.years) ? a : b));
+    for (const k of group) if (k !== latest) for (const [raw, key] of keys) if (key === k) keys.set(raw, latest);
+    const sample = [...parsed.values()].find((p) => p.nameKey === facts.get(latest)!.nameKey)!;
+    pinChanges.push([sample.name, group.flatMap((k) => [...facts.get(k)!.pins]).join(' / ') || 'none']);
+  }
+  const stillUnresolved = unresolved.filter((raw) => !pinChanges.some(([name]) => parsed.get(raw)!.name === name));
+
+  return { keys, unresolved: stillUnresolved, renames, pinChanges };
 }

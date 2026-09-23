@@ -171,6 +171,14 @@ test('NEET ranges match the MCC round-1 allotment list', async () => {
   assert.equal(body.data[0].program_name, 'Medicine and Surgery');
 });
 
+test('a medical college stays one record when MCC changes its PIN', async () => {
+  // MCC printed AIIMS Jammu's PIN as 18410, 184120 and 181134 in successive years.
+  const { body } = await get('/api/v1/search?q=AIIMS Jammu');
+  assert.equal(body.data.institutes.length, 1);
+  const cutoffs = await get(`/api/v1/colleges/${body.data.institutes[0].id}/cutoffs?exam=neet`);
+  assert.deepEqual([...new Set(cutoffs.body.data.map((c: any) => c.year))].sort(), [2022, 2023, 2024, 2025]);
+});
+
 test('NEET women-only seats are offered only to female candidates', async () => {
   // 2025 women-only general seats close at AIR 1,128, 7,449 and 12,719.
   const male = await get('/api/v1/predict?exam=neet&rank=5000&category=general&gender=male');

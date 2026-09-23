@@ -107,7 +107,7 @@ const placementsRouteSchema = {
   tags: ['Colleges'],
   summary: 'Get placement records for an institute',
   description:
-    'Returns official placement figures from the institute\'s NIRF data report — graduates, students placed, placement percentage, median salary and students going on to higher studies — for its three most recent graduating batches in each program block (UG 4-year, PG 2-year, ...), newest first. Add `?year=` for batches graduating in one year. NIRF reports no average or highest salary. Coverage is NIRF-ranked institutes; others return an empty array, which means no data rather than no placements.',
+    'Returns official placement figures from the institute\'s NIRF data report — graduates, students placed, placement percentage, median salary and students going on to higher studies — for its three most recent graduating batches in each program block (UG 4-year, PG 2-year, ...), newest first — mostly batches graduating 2022-2024, since each report covers the three years before it. Add `?year=` for batches graduating in one year. NIRF reports no average or highest salary. Coverage is NIRF-ranked institutes; others return an empty array, which means no data rather than no placements.',
   params: idParams,
   querystring: {
     type: 'object',

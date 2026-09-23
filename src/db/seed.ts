@@ -308,7 +308,7 @@ const seed = () => {
       });
       mccInstituteKey.set(id, key);
     }
-    report.push(`MCC: ${latestRaw.size} medical college entries (${knownByMcc.size} matched to existing metadata; ${resolution.renames.length} renames merged; ${resolution.unresolved.length} unresolved)`);
+    report.push(`MCC: ${latestRaw.size} medical college entries (${knownByMcc.size} matched to existing metadata; ${resolution.renames.length} renames and ${resolution.pinChanges.length} PIN changes merged; ${resolution.unresolved.length} unresolved)`);
 
     // NIRF names medical colleges differently from MCC; match them by name key
     // (with or without the city appended), confirmed by state.

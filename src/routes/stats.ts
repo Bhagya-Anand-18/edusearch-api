@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { db } from '../db/database.js';
 import { objectResponse, errorResponse } from '../schemas/common.js';
+import { DATA_PROVENANCE } from '../config.js';
 
 const routeSchema = {
   tags: ['Stats'],
@@ -43,6 +44,12 @@ const routeSchema = {
             },
           },
           last_updated: { type: 'string', description: 'ISO 8601 timestamp of when this response was generated.' },
+          data_source: {
+            type: 'string',
+            enum: ['synthetic', 'official'],
+            description: 'Where the data comes from. "synthetic" means generated sample data, not official figures.',
+          },
+          data_notice: { type: 'string', description: 'Plain-language caveat about the data source.' },
         },
       },
       'Coverage counts for the dataset.'
@@ -80,6 +87,8 @@ export default async function(fastify: FastifyInstance) {
         year_range: { from: yearRange.min_year, to: yearRange.max_year },
         institute_breakdown: instituteTypes,
         last_updated: new Date().toISOString(),
+        data_source: DATA_PROVENANCE.source,
+        data_notice: DATA_PROVENANCE.notice,
       }
     };
   });

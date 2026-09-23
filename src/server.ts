@@ -15,7 +15,7 @@ import predictRoutes from './routes/predict.js';
 import searchRoutes from './routes/search.js';
 import compareRoutes from './routes/compare.js';
 import statsRoutes from './routes/stats.js';
-import { config } from './config.js';
+import { config, DATA_PROVENANCE } from './config.js';
 
 export const buildServer = async () => {
   const server = fastify({ logger: false });
@@ -31,7 +31,7 @@ export const buildServer = async () => {
     openapi: {
       info: {
         title: 'EduSearch API',
-        description: 'Comprehensive Indian Education Data API — JEE/NEET cutoffs, NIRF rankings, college data, placements, and admission predictions.',
+        description: `Indian education data API — JEE/NEET cutoffs, NIRF rankings, college data, placements, and admission predictions.\n\n**${DATA_PROVENANCE.notice}**`,
         version: '1.0.0',
         contact: {
           name: 'EduSearch API',
@@ -127,6 +127,8 @@ export const buildServer = async () => {
       name: 'EduSearch API',
       version: '1.0.0',
       description: 'Indian Education Data API — JEE/NEET cutoffs, NIRF rankings, college predictions',
+      data_source: DATA_PROVENANCE.source,
+      data_notice: DATA_PROVENANCE.notice,
       docs: '/docs',
       endpoints: {
         cutoffs: '/api/v1/cutoffs',

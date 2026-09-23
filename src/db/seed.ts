@@ -1,6 +1,20 @@
 import { db } from './database.js';
 import { logger } from '../utils/logger.js';
 
+/**
+ * The dataset is synthetic, and render.yaml re-runs this script on every
+ * build. A fixed-seed PRNG (mulberry32) keeps the numbers identical across
+ * deploys, so consumers never see cutoffs silently change on a redeploy.
+ */
+const SEED = 20250601;
+const mulberry32 = (a: number) => () => {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+};
+const random = mulberry32(SEED);
+
 const seedData = async () => {
     logger.info("Starting seed data generation...");
 
@@ -143,7 +157,7 @@ const seedData = async () => {
         `);
 
         // Helper to randomize
-        const randRange = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+        const randRange = (min: number, max: number) => Math.floor(random() * (max - min + 1)) + min;
         
         // Base ranges for Top IIT CSE Gen (adjust for other IITs)
         const iitBaseRanks: Record<string, { o: number, c: number }> = {
@@ -164,7 +178,12 @@ const seedData = async () => {
             'CSE': 1.0, 'MNC': 1.5, 'EE': 2.5, 'EP': 3.5, 'ME': 4.5, 'AE': 5.0, 'CH': 6.0, 'CE': 7.0
         };
 
-        const catMult: Record<string, number> = { 'general': 1.0, 'obc': 1.5, 'sc': 3.5, 'st': 5.0 };
+        const catMult: Record<string, number> = { 'general': 1.0, 'ews': 1.3, 'obc': 1.5, 'sc': 3.5, 'st': 5.0 };
+        const categories = Object.keys(catMult);
+
+        // Female-only (supernumerary) seats close at larger rank numbers than
+        // the gender-neutral pool for the same program.
+        const FEMALE_POOL_MULT = 1.8;
 
         for (const year of [2022, 2023, 2024, 2025]) {
             for (const [key, progId] of Object.entries(progIdMap)) {
@@ -178,7 +197,7 @@ const seedData = async () => {
                     const baseRank = iitBaseRanks[instName] || { o: randRange(200, 1000), c: randRange(1500, 4000) };
                     const bMult = branchMult[branchCode] || 1;
                     
-                    for (const cat of ['general', 'obc', 'sc', 'st']) {
+                    for (const cat of categories) {
                         const cMult = catMult[cat];
                         const vary = 1 + (randRange(-10, 15) / 100);
                         
@@ -191,23 +210,25 @@ const seedData = async () => {
                         const f_op = r1_op;
                         const f_cl = Math.floor(r1_cl * (1 + (randRange(5, 20) / 100)));
                         insertCutoff.run(progId, 'jee_advanced', year, 6, cat, 'neutral', f_op, f_cl);
+                        insertCutoff.run(progId, 'jee_advanced', year, 6, cat, 'female',
+                            Math.floor(f_op * FEMALE_POOL_MULT), Math.floor(f_cl * FEMALE_POOL_MULT));
                     }
                 } else if (isNIT || isIIIT) {
                     const baseRank = nitBaseRanks[instName] || { o: randRange(3000, 8000), c: randRange(10000, 20000) };
                     const bMult = branchMult[branchCode] || 1;
 
-                    for (const cat of ['general', 'obc', 'sc', 'st']) {
+                    for (const cat of categories) {
                         const cMult = catMult[cat];
                         const vary = 1 + (randRange(-10, 15) / 100);
                         
                         const r1_op = Math.floor(baseRank.o * bMult * cMult * vary);
                         const r1_cl = Math.floor(baseRank.c * bMult * cMult * vary);
                         
-                        // Home State vs Other State
-                        const hsOp = Math.floor(r1_op * 1.3);
-                        const hsCl = Math.floor(r1_cl * 1.3);
-                        insertCutoff.run(progId, 'jee_main', year, 1, cat, 'neutral', hsOp, hsCl);
+                        // One row per pool. The schema has no quota column, so a separate
+                        // home-state row would be indistinguishable from this one.
                         insertCutoff.run(progId, 'jee_main', year, 1, cat, 'neutral', r1_op, r1_cl);
+                        insertCutoff.run(progId, 'jee_main', year, 1, cat, 'female',
+                            Math.floor(r1_op * FEMALE_POOL_MULT), Math.floor(r1_cl * FEMALE_POOL_MULT));
                     }
                 } else if (isMed) {
                     // NEET scores are stored as ranks in DB usually, but user specified scores.
@@ -222,7 +243,7 @@ const seedData = async () => {
                     else if (instName === 'JIPMER') { op = 50; cl = 300; }
                     else { op = randRange(300, 2000); cl = randRange(1500, 8000); }
                     
-                    for (const cat of ['general', 'obc', 'sc', 'st']) {
+                    for (const cat of categories) {
                         const cMult = catMult[cat];
                         const r_op = Math.floor(op * cMult * (1 + randRange(-5, 5)/100));
                         const r_cl = Math.floor(cl * cMult * (1 + randRange(-5, 5)/100));
@@ -253,7 +274,10 @@ const seedData = async () => {
                     pct = randRange(95, 99); med = randRange(12, 20); avg = randRange(15, 25); high = randRange(30, 40);
                 }
                 
-                const recruiters = JSON.stringify(['Google', 'Microsoft', 'Amazon', 'Apple', 'Meta', 'HFTs'].sort(() => 0.5 - Math.random()).slice(0, 3));
+                const pool = medical.some(m => m[1] === shortName)
+                    ? ['Apollo Hospitals', 'Fortis Healthcare', 'Max Healthcare', 'Manipal Hospitals', 'State Health Services', 'AIIMS']
+                    : ['Google', 'Microsoft', 'Amazon', 'Apple', 'Meta', 'HFTs'];
+                const recruiters = JSON.stringify([...pool].sort(() => 0.5 - random()).slice(0, 3));
                 insertPlacement.run(id, year, 'Overall', pct, med * 100000, avg * 100000, high * 100000, recruiters);
             }
         }

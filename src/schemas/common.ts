@@ -107,8 +107,10 @@ export const examStatSchema = entity({
 export const predictionSchema = entity({
   institute: instituteSchema,
   program: programSchema,
-  confidence_pct: int('Estimated chance of admission, 0-99, from the rank against historical opening and closing ranks.'),
+  confidence_pct: int('Estimated chance of admission, 0-99, from the rank against historical opening and closing ranks. Each program appears once, scored on its most favourable round and seat pool.'),
   last_year_closing_rank: intNull('Closing rank in the most recent year on record.'),
+  round: intNull('Counselling round the closing rank comes from.'),
+  seat_pool: str('Seat pool the prediction is based on: gender_neutral, or female_only when gender=female gives a better chance.'),
   trend: str('How the closing rank moved year over year: improving, stable or declining.'),
   nirf_rank: int('NIRF rank used as the tie-breaker when confidence is equal. 9999 means unranked.'),
 });

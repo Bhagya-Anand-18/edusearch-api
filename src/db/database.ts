@@ -8,7 +8,8 @@ if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-export const db = new Database(path.join(dataDir, 'edusearch.db'));
+// DB_PATH lets the test suite run against its own copy instead of the dev database.
+export const db = new Database(process.env.DB_PATH || path.join(dataDir, 'edusearch.db'));
 db.pragma('journal_mode = WAL');
 
 // Initialize schema

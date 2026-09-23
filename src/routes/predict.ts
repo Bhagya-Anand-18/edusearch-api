@@ -86,7 +86,7 @@ export default async function(fastify: FastifyInstance) {
       
       let sql = `
         SELECT 
-          c.id as cutoff_id, c.opening_rank, c.closing_rank, c.year, c.category,
+          c.id as cutoff_id, c.opening_rank, c.closing_rank, c.year, c.round, c.category, c.gender,
           p.id as program_id, p.name as program_name, p.degree,
           i.id as institute_id, i.name as institute_name, i.short_name, i.type, i.state, i.nirf_rank
         FROM cutoffs c
@@ -118,13 +118,15 @@ export default async function(fastify: FastifyInstance) {
       
       let cutoffs = db.prepare(sql).all(...params) as any[];
       
+      // Compare against the same round and seat pool last year, so the trend
+      // reflects a real year-over-year shift rather than a round-1 vs final-round gap.
       const prevYearStmt = db.prepare(`
         SELECT closing_rank FROM cutoffs 
-        WHERE program_id = ? AND exam = ? AND category = ? AND year = ?
+        WHERE program_id = ? AND exam = ? AND category = ? AND year = ? AND round = ? AND gender = ?
         LIMIT 1
       `);
       
-      const results = cutoffs.map(c => {
+      const scored = cutoffs.map(c => {
         let confidence = 0;
         let opening = c.opening_rank || 1;
         let closing = c.closing_rank || 1;
@@ -141,7 +143,7 @@ export default async function(fastify: FastifyInstance) {
         }
         
         let trend = 'stable';
-        const prevYearCutoff = prevYearStmt.get(c.program_id, query.exam, query.category, latestYear - 1) as any;
+        const prevYearCutoff = prevYearStmt.get(c.program_id, query.exam, query.category, latestYear - 1, c.round, c.gender) as any;
         
         if (prevYearCutoff) {
           const prevClosing = prevYearCutoff.closing_rank;
@@ -159,11 +161,26 @@ export default async function(fastify: FastifyInstance) {
           program: { id: c.program_id, name: c.program_name, degree: c.degree },
           confidence_pct: Math.max(0, Math.min(99, Math.round(confidence))),
           last_year_closing_rank: closing,
+          round: c.round,
+          seat_pool: c.gender === 'female' ? 'female_only' : 'gender_neutral',
           trend,
           nirf_rank: c.nirf_rank || 9999
         };
       }).filter(r => r.confidence_pct > 0);
-      
+
+      // A program has several cutoff rows (rounds, seat pools). Report each program
+      // once, using whichever row gives the candidate the best chance.
+      const bestByProgram = new Map<number, (typeof scored)[number]>();
+      for (const r of scored) {
+        const current = bestByProgram.get(r.program.id);
+        const better = !current
+          || r.confidence_pct > current.confidence_pct
+          // On a tie, prefer the later round: its closing rank is the more definitive one.
+          || (r.confidence_pct === current.confidence_pct && r.round > current.round);
+        if (better) bestByProgram.set(r.program.id, r);
+      }
+      const results = [...bestByProgram.values()];
+
       results.sort((a, b) => {
         if (b.confidence_pct !== a.confidence_pct) {
           return b.confidence_pct - a.confidence_pct;

@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "EduSearch API",
-    "description": "Comprehensive Indian Education Data API \u2014 JEE/NEET cutoffs, NIRF rankings, college data, placements, and admission predictions.",
+    "description": "Comprehensive Indian Education Data API — JEE/NEET cutoffs, NIRF rankings, college data, placements, and admission predictions.",
     "version": "1.0.0",
     "contact": {
       "name": "EduSearch API"
@@ -14,157 +14,2897 @@
   "paths": {
     "/health": {
       "get": {
+        "summary": "Health check",
+        "tags": [
+          "Meta"
+        ],
+        "description": "Returns 200 while the service is up. Unauthenticated, so uptime monitors can hit it directly.",
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "The service is healthy.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "The service is healthy.",
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "description": "Always \"ok\"."
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "description": "ISO 8601 time the check ran."
+                    },
+                    "version": {
+                      "type": "string",
+                      "description": "Running API version."
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
     },
     "/": {
       "get": {
+        "summary": "API index",
+        "tags": [
+          "Meta"
+        ],
+        "description": "Lists the available endpoints and where the documentation lives.",
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Service metadata and the endpoint index.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Service metadata and the endpoint index.",
+                  "type": "object",
+                  "additionalProperties": true,
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "Service name."
+                    },
+                    "version": {
+                      "type": "string",
+                      "description": "Running API version."
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "One-line summary of what the API serves."
+                    },
+                    "docs": {
+                      "type": "string",
+                      "description": "Path to the Swagger UI."
+                    },
+                    "endpoints": {
+                      "type": "object",
+                      "additionalProperties": true,
+                      "description": "Map of endpoint name to path."
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
     },
     "/api/v1/cutoffs": {
       "get": {
+        "summary": "List JEE/NEET closing ranks",
+        "tags": [
+          "Cutoffs"
+        ],
+        "description": "Returns historical opening and closing ranks for JEE Advanced, JEE Main and NEET, joined with the program and institute they belong to. Combine filters freely — for example `?exam=jee_advanced&year=2025&category=general&institute=IIT Bombay`. Results are ordered by closing rank ascending, so the most competitive seats come first.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "jee_advanced",
+                "jee_main",
+                "neet"
+              ]
+            },
+            "in": "query",
+            "name": "exam",
+            "required": false,
+            "description": "Restrict results to one exam."
+          },
+          {
+            "schema": {
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "year",
+            "required": false,
+            "description": "Admission year, e.g. 2025."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "description": "Reservation category: general, obc, sc, st or ews."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "gender",
+            "required": false,
+            "description": "Gender pool: neutral or female."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "institute",
+            "required": false,
+            "description": "Institute ID, exact short name, or any part of the full name."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "program",
+            "required": false,
+            "description": "Partial program name, e.g. \"Computer Science\"."
+          },
+          {
+            "schema": {
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "description": "Counselling round number."
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "description": "Maximum records to return (1-200)."
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "description": "Records to skip, for paging through results."
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Matching cutoff records with pagination metadata.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Matching cutoff records with pagination metadata.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always true on a successful response."
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "description": "Unique cutoff record ID."
+                          },
+                          "program_id": {
+                            "type": "integer",
+                            "description": "ID of the program this cutoff belongs to."
+                          },
+                          "exam": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Exam the cutoff comes from: jee_advanced, jee_main or neet."
+                          },
+                          "year": {
+                            "type": "integer",
+                            "nullable": true,
+                            "description": "Admission year the cutoff applies to."
+                          },
+                          "round": {
+                            "type": "integer",
+                            "nullable": true,
+                            "description": "Counselling round number."
+                          },
+                          "category": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Reservation category: general, obc, sc, st or ews."
+                          },
+                          "gender": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Gender pool: neutral or female."
+                          },
+                          "opening_rank": {
+                            "type": "integer",
+                            "nullable": true,
+                            "description": "Best rank admitted in this round."
+                          },
+                          "closing_rank": {
+                            "type": "integer",
+                            "nullable": true,
+                            "description": "Last rank admitted in this round — the number most consumers filter on."
+                          },
+                          "program_name": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Program name, joined in for convenience."
+                          },
+                          "degree": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Degree awarded, joined in for convenience."
+                          },
+                          "institute_name": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Full institute name, joined in for convenience."
+                          },
+                          "institute_short_name": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Institute abbreviation, joined in for convenience."
+                          }
+                        }
+                      },
+                      "description": "The matching records."
+                    },
+                    "meta": {
+                      "type": "object",
+                      "description": "Pagination metadata.",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "description": "Total records matching the filters, ignoring limit and offset."
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "description": "Maximum records returned in this response."
+                        },
+                        "offset": {
+                          "type": "integer",
+                          "description": "Number of records skipped."
+                        },
+                        "has_more": {
+                          "type": "boolean",
+                          "description": "True when more records remain beyond this page."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "One or more query parameters were invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "One or more query parameters were invalid.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always false on an error response."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Human-readable description of what went wrong."
+                    },
+                    "statusCode": {
+                      "type": "integer",
+                      "description": "HTTP status code, repeated in the body for convenience."
+                    },
+                    "details": {
+                      "type": "array",
+                      "nullable": true,
+                      "description": "Per-field validation problems, present on 400 responses.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request did not reach the API through the RapidAPI proxy. Only returned by the hosted deployment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Request did not reach the API through the RapidAPI proxy. Only returned by the hosted deployment.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always false on an error response."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Human-readable description of what went wrong."
+                    },
+                    "statusCode": {
+                      "type": "integer",
+                      "description": "HTTP status code, repeated in the body for convenience."
+                    },
+                    "details": {
+                      "type": "array",
+                      "nullable": true,
+                      "description": "Per-field validation problems, present on 400 responses.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
     },
     "/api/v1/colleges": {
       "get": {
+        "summary": "Search and filter institutes",
+        "tags": [
+          "Colleges"
+        ],
+        "description": "Returns institutes matching the given filters, ordered by NIRF rank then name. Use it to build pickers and browse pages — for example `?type=IIT&state=Tamil Nadu` or `?nirf_rank_max=10`. The `id` on each record is what /api/v1/colleges/{id} and /api/v1/compare expect.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "IIT",
+                "NIT",
+                "IIIT",
+                "GFTI",
+                "Medical"
+              ]
+            },
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "description": "Restrict to one institute category."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "description": "Exact state name, e.g. \"Maharashtra\"."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "city",
+            "required": false,
+            "description": "Exact city name, e.g. \"Mumbai\"."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "description": "Partial match against the full name or abbreviation."
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "in": "query",
+            "name": "nirf_rank_min",
+            "required": false,
+            "description": "Only institutes ranked at or below this number (worse than or equal to)."
+          },
+          {
+            "schema": {
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "nirf_rank_max",
+            "required": false,
+            "description": "Only institutes ranked at or above this number (better than or equal to)."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "has_program",
+            "required": false,
+            "description": "Only institutes offering a program matching this text, e.g. \"Computer Science\"."
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "description": "Maximum records to return (1-200)."
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "description": "Records to skip, for paging through results."
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Matching institutes with pagination metadata.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Matching institutes with pagination metadata.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always true on a successful response."
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "description": "Unique institute ID. Use this with /api/v1/compare and /api/v1/colleges/{id}."
+                          },
+                          "name": {
+                            "type": "string",
+                            "description": "Full official name, e.g. \"Indian Institute of Technology Bombay\"."
+                          },
+                          "short_name": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Common abbreviation, e.g. \"IIT Bombay\"."
+                          },
+                          "type": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Institute category: IIT, NIT, IIIT, GFTI or Medical."
+                          },
+                          "state": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "State the institute is located in."
+                          },
+                          "city": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "City the institute is located in."
+                          },
+                          "nirf_rank": {
+                            "type": "integer",
+                            "nullable": true,
+                            "description": "Most recent NIRF rank, or null if unranked."
+                          },
+                          "nirf_score": {
+                            "type": "number",
+                            "nullable": true,
+                            "description": "Most recent NIRF score out of 100."
+                          },
+                          "website": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Official website URL."
+                          },
+                          "established_year": {
+                            "type": "integer",
+                            "nullable": true,
+                            "description": "Year the institute was founded."
+                          }
+                        }
+                      },
+                      "description": "The matching records."
+                    },
+                    "meta": {
+                      "type": "object",
+                      "description": "Pagination metadata.",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "description": "Total records matching the filters, ignoring limit and offset."
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "description": "Maximum records returned in this response."
+                        },
+                        "offset": {
+                          "type": "integer",
+                          "description": "Number of records skipped."
+                        },
+                        "has_more": {
+                          "type": "boolean",
+                          "description": "True when more records remain beyond this page."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "One or more query parameters were invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "One or more query parameters were invalid.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always false on an error response."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Human-readable description of what went wrong."
+                    },
+                    "statusCode": {
+                      "type": "integer",
+                      "description": "HTTP status code, repeated in the body for convenience."
+                    },
+                    "details": {
+                      "type": "array",
+                      "nullable": true,
+                      "description": "Per-field validation problems, present on 400 responses.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request did not reach the API through the RapidAPI proxy. Only returned by the hosted deployment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Request did not reach the API through the RapidAPI proxy. Only returned by the hosted deployment.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always false on an error response."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Human-readable description of what went wrong."
+                    },
+                    "statusCode": {
+                      "type": "integer",
+                      "description": "HTTP status code, repeated in the body for convenience."
+                    },
+                    "details": {
+                      "type": "array",
+                      "nullable": true,
+                      "description": "Per-field validation problems, present on 400 responses.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
     },
     "/api/v1/colleges/{id}": {
       "get": {
+        "summary": "Get one institute in full",
+        "tags": [
+          "Colleges"
+        ],
+        "description": "Returns a single institute along with every program it offers, its five most recent NIRF rankings and its five most recent placement records — everything a college profile page needs in one call.",
         "parameters": [
           {
             "schema": {
-              "type": "string"
+              "type": "integer"
             },
             "in": "path",
             "name": "id",
-            "required": true
+            "required": true,
+            "description": "Institute ID, as returned by /api/v1/colleges."
           }
         ],
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "The institute with its programs, rankings and placements.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "The institute with its programs, rankings and placements.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always true on a successful response."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "institute": {
+                          "type": "object",
+                          "additionalProperties": true,
+                          "properties": {
+                            "id": {
+                              "type": "integer",
+                              "description": "Unique institute ID. Use this with /api/v1/compare and /api/v1/colleges/{id}."
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Full official name, e.g. \"Indian Institute of Technology Bombay\"."
+                            },
+                            "short_name": {
+                              "type": "string",
+                              "nullable": true,
+                              "description": "Common abbreviation, e.g. \"IIT Bombay\"."
+                            },
+                            "type": {
+                              "type": "string",
+                              "nullable": true,
+                              "description": "Institute category: IIT, NIT, IIIT, GFTI or Medical."
+                            },
+                            "state": {
+                              "type": "string",
+                              "nullable": true,
+                              "description": "State the institute is located in."
+                            },
+                            "city": {
+                              "type": "string",
+                              "nullable": true,
+                              "description": "City the institute is located in."
+                            },
+                            "nirf_rank": {
+                              "type": "integer",
+                              "nullable": true,
+                              "description": "Most recent NIRF rank, or null if unranked."
+                            },
+                            "nirf_score": {
+                              "type": "number",
+                              "nullable": true,
+                              "description": "Most recent NIRF score out of 100."
+                            },
+                            "website": {
+                              "type": "string",
+                              "nullable": true,
+                              "description": "Official website URL."
+                            },
+                            "established_year": {
+                              "type": "integer",
+                              "nullable": true,
+                              "description": "Year the institute was founded."
+                            }
+                          }
+                        },
+                        "programs": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": true,
+                            "properties": {
+                              "id": {
+                                "type": "integer",
+                                "description": "Unique program ID."
+                              },
+                              "institute_id": {
+                                "type": "integer",
+                                "description": "ID of the institute offering this program."
+                              },
+                              "name": {
+                                "type": "string",
+                                "description": "Program name, e.g. \"Computer Science and Engineering\"."
+                              },
+                              "degree": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Degree awarded, e.g. \"B.Tech\", \"MBBS\"."
+                              },
+                              "duration_years": {
+                                "type": "integer",
+                                "nullable": true,
+                                "description": "Program length in years."
+                              },
+                              "branch_code": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Counselling branch code, where one exists."
+                              },
+                              "institute_name": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Full institute name, joined in by /api/v1/search."
+                              },
+                              "institute_short_name": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Institute abbreviation, joined in by /api/v1/search and /api/v1/compare."
+                              }
+                            }
+                          },
+                          "description": "Every program offered."
+                        },
+                        "nirf_rankings": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": true,
+                            "properties": {
+                              "id": {
+                                "type": "integer",
+                                "description": "Unique ranking record ID."
+                              },
+                              "institute_id": {
+                                "type": "integer",
+                                "description": "ID of the ranked institute."
+                              },
+                              "year": {
+                                "type": "integer",
+                                "nullable": true,
+                                "description": "Ranking year."
+                              },
+                              "category": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Ranking category: engineering, medical, overall, pharmacy or management."
+                              },
+                              "rank": {
+                                "type": "integer",
+                                "nullable": true,
+                                "description": "Position in the ranking for that year and category."
+                              },
+                              "score": {
+                                "type": "number",
+                                "nullable": true,
+                                "description": "Overall NIRF score out of 100."
+                              },
+                              "tlr_score": {
+                                "type": "number",
+                                "nullable": true,
+                                "description": "Teaching, Learning and Resources sub-score."
+                              },
+                              "rpc_score": {
+                                "type": "number",
+                                "nullable": true,
+                                "description": "Research and Professional Practice sub-score."
+                              },
+                              "go_score": {
+                                "type": "number",
+                                "nullable": true,
+                                "description": "Graduation Outcomes sub-score."
+                              },
+                              "oi_score": {
+                                "type": "number",
+                                "nullable": true,
+                                "description": "Outreach and Inclusivity sub-score."
+                              },
+                              "perception_score": {
+                                "type": "number",
+                                "nullable": true,
+                                "description": "Perception sub-score."
+                              },
+                              "institute_name": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Full institute name, joined in for convenience."
+                              },
+                              "short_name": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Institute abbreviation, joined in for convenience."
+                              },
+                              "type": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Institute category, joined in for convenience."
+                              },
+                              "state": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Institute state, joined in for convenience."
+                              }
+                            }
+                          },
+                          "description": "Five most recent NIRF rankings, newest first."
+                        },
+                        "placements": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": true,
+                            "properties": {
+                              "id": {
+                                "type": "integer",
+                                "description": "Unique placement record ID."
+                              },
+                              "institute_id": {
+                                "type": "integer",
+                                "description": "ID of the institute."
+                              },
+                              "year": {
+                                "type": "integer",
+                                "nullable": true,
+                                "description": "Placement season year."
+                              },
+                              "program_or_dept": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Program or department the figures cover."
+                              },
+                              "students_placed_pct": {
+                                "type": "number",
+                                "nullable": true,
+                                "description": "Share of eligible students placed, as a percentage."
+                              },
+                              "median_salary": {
+                                "type": "number",
+                                "nullable": true,
+                                "description": "Median annual package in INR."
+                              },
+                              "average_salary": {
+                                "type": "number",
+                                "nullable": true,
+                                "description": "Average annual package in INR."
+                              },
+                              "highest_salary": {
+                                "type": "number",
+                                "nullable": true,
+                                "description": "Highest annual package in INR."
+                              },
+                              "top_recruiters": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "JSON-encoded array of recruiter names."
+                              }
+                            }
+                          },
+                          "description": "Five most recent placement records, newest first."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The institute ID was not a valid integer.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "The institute ID was not a valid integer.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always false on an error response."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Human-readable description of what went wrong."
+                    },
+                    "statusCode": {
+                      "type": "integer",
+                      "description": "HTTP status code, repeated in the body for convenience."
+                    },
+                    "details": {
+                      "type": "array",
+                      "nullable": true,
+                      "description": "Per-field validation problems, present on 400 responses.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request did not reach the API through the RapidAPI proxy. Only returned by the hosted deployment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Request did not reach the API through the RapidAPI proxy. Only returned by the hosted deployment.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always false on an error response."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Human-readable description of what went wrong."
+                    },
+                    "statusCode": {
+                      "type": "integer",
+                      "description": "HTTP status code, repeated in the body for convenience."
+                    },
+                    "details": {
+                      "type": "array",
+                      "nullable": true,
+                      "description": "Per-field validation problems, present on 400 responses.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No institute exists with that ID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "No institute exists with that ID.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always false on an error response."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Human-readable description of what went wrong."
+                    },
+                    "statusCode": {
+                      "type": "integer",
+                      "description": "HTTP status code, repeated in the body for convenience."
+                    },
+                    "details": {
+                      "type": "array",
+                      "nullable": true,
+                      "description": "Per-field validation problems, present on 400 responses.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
     },
     "/api/v1/colleges/{id}/placements": {
       "get": {
+        "summary": "Get placement records for an institute",
+        "tags": [
+          "Colleges"
+        ],
+        "description": "Returns placement figures — placement percentage and median, average and highest packages — for one institute, newest year first. Add `?year=` to pin a single season.",
         "parameters": [
           {
             "schema": {
-              "type": "string"
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "year",
+            "required": false,
+            "description": "Restrict to a single placement year, e.g. 2025."
+          },
+          {
+            "schema": {
+              "type": "integer"
             },
             "in": "path",
             "name": "id",
-            "required": true
+            "required": true,
+            "description": "Institute ID, as returned by /api/v1/colleges."
           }
         ],
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Placement records for the institute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Placement records for the institute.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always true on a successful response."
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "description": "Unique placement record ID."
+                          },
+                          "institute_id": {
+                            "type": "integer",
+                            "description": "ID of the institute."
+                          },
+                          "year": {
+                            "type": "integer",
+                            "nullable": true,
+                            "description": "Placement season year."
+                          },
+                          "program_or_dept": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Program or department the figures cover."
+                          },
+                          "students_placed_pct": {
+                            "type": "number",
+                            "nullable": true,
+                            "description": "Share of eligible students placed, as a percentage."
+                          },
+                          "median_salary": {
+                            "type": "number",
+                            "nullable": true,
+                            "description": "Median annual package in INR."
+                          },
+                          "average_salary": {
+                            "type": "number",
+                            "nullable": true,
+                            "description": "Average annual package in INR."
+                          },
+                          "highest_salary": {
+                            "type": "number",
+                            "nullable": true,
+                            "description": "Highest annual package in INR."
+                          },
+                          "top_recruiters": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "JSON-encoded array of recruiter names."
+                          }
+                        }
+                      },
+                      "description": "Placement records, newest year first."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The institute ID or year was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "The institute ID or year was invalid.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always false on an error response."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Human-readable description of what went wrong."
+                    },
+                    "statusCode": {
+                      "type": "integer",
+                      "description": "HTTP status code, repeated in the body for convenience."
+                    },
+                    "details": {
+                      "type": "array",
+                      "nullable": true,
+                      "description": "Per-field validation problems, present on 400 responses.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request did not reach the API through the RapidAPI proxy. Only returned by the hosted deployment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Request did not reach the API through the RapidAPI proxy. Only returned by the hosted deployment.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always false on an error response."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Human-readable description of what went wrong."
+                    },
+                    "statusCode": {
+                      "type": "integer",
+                      "description": "HTTP status code, repeated in the body for convenience."
+                    },
+                    "details": {
+                      "type": "array",
+                      "nullable": true,
+                      "description": "Per-field validation problems, present on 400 responses.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
     },
     "/api/v1/colleges/{id}/cutoffs": {
       "get": {
+        "summary": "Get cutoffs for one institute",
+        "tags": [
+          "Colleges"
+        ],
+        "description": "Returns every cutoff on record for one institute, joined with the program name, ordered by year descending then closing rank ascending. Narrow it with `exam`, `year` or `category`.",
         "parameters": [
           {
             "schema": {
               "type": "string"
             },
+            "in": "query",
+            "name": "exam",
+            "required": false,
+            "description": "Exam identifier: jee_advanced, jee_main or neet."
+          },
+          {
+            "schema": {
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "year",
+            "required": false,
+            "description": "Admission year, e.g. 2025."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "description": "Reservation category: general, obc, sc, st or ews."
+          },
+          {
+            "schema": {
+              "type": "integer"
+            },
             "in": "path",
             "name": "id",
-            "required": true
+            "required": true,
+            "description": "Institute ID, as returned by /api/v1/colleges."
           }
         ],
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Cutoff records for the institute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Cutoff records for the institute.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always true on a successful response."
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "description": "Unique cutoff record ID."
+                          },
+                          "program_id": {
+                            "type": "integer",
+                            "description": "ID of the program this cutoff belongs to."
+                          },
+                          "exam": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Exam the cutoff comes from: jee_advanced, jee_main or neet."
+                          },
+                          "year": {
+                            "type": "integer",
+                            "nullable": true,
+                            "description": "Admission year the cutoff applies to."
+                          },
+                          "round": {
+                            "type": "integer",
+                            "nullable": true,
+                            "description": "Counselling round number."
+                          },
+                          "category": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Reservation category: general, obc, sc, st or ews."
+                          },
+                          "gender": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Gender pool: neutral or female."
+                          },
+                          "opening_rank": {
+                            "type": "integer",
+                            "nullable": true,
+                            "description": "Best rank admitted in this round."
+                          },
+                          "closing_rank": {
+                            "type": "integer",
+                            "nullable": true,
+                            "description": "Last rank admitted in this round — the number most consumers filter on."
+                          },
+                          "program_name": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Program name, joined in for convenience."
+                          },
+                          "degree": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Degree awarded, joined in for convenience."
+                          },
+                          "institute_name": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Full institute name, joined in for convenience."
+                          },
+                          "institute_short_name": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Institute abbreviation, joined in for convenience."
+                          }
+                        }
+                      },
+                      "description": "Cutoff records for the institute."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The institute ID or a query parameter was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "The institute ID or a query parameter was invalid.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always false on an error response."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Human-readable description of what went wrong."
+                    },
+                    "statusCode": {
+                      "type": "integer",
+                      "description": "HTTP status code, repeated in the body for convenience."
+                    },
+                    "details": {
+                      "type": "array",
+                      "nullable": true,
+                      "description": "Per-field validation problems, present on 400 responses.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request did not reach the API through the RapidAPI proxy. Only returned by the hosted deployment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Request did not reach the API through the RapidAPI proxy. Only returned by the hosted deployment.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always false on an error response."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Human-readable description of what went wrong."
+                    },
+                    "statusCode": {
+                      "type": "integer",
+                      "description": "HTTP status code, repeated in the body for convenience."
+                    },
+                    "details": {
+                      "type": "array",
+                      "nullable": true,
+                      "description": "Per-field validation problems, present on 400 responses.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
     },
     "/api/v1/rankings/nirf": {
       "get": {
+        "summary": "List NIRF rankings",
+        "tags": [
+          "Rankings"
+        ],
+        "description": "Returns NIRF rankings with the overall score and every published sub-score (teaching, research, graduation outcomes, outreach, perception), joined with institute details. Omit `year` to get the most recent ranking year on record. Results are ordered by rank ascending.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "year",
+            "required": false,
+            "description": "Ranking year. Defaults to the latest year available."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "engineering",
+                "medical",
+                "overall",
+                "pharmacy",
+                "management"
+              ]
+            },
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "description": "Ranking category to return."
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "description": "Maximum records to return (1-200)."
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "description": "Records to skip, for paging through results."
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Matching NIRF rankings with pagination metadata.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Matching NIRF rankings with pagination metadata.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always true on a successful response."
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "description": "Unique ranking record ID."
+                          },
+                          "institute_id": {
+                            "type": "integer",
+                            "description": "ID of the ranked institute."
+                          },
+                          "year": {
+                            "type": "integer",
+                            "nullable": true,
+                            "description": "Ranking year."
+                          },
+                          "category": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Ranking category: engineering, medical, overall, pharmacy or management."
+                          },
+                          "rank": {
+                            "type": "integer",
+                            "nullable": true,
+                            "description": "Position in the ranking for that year and category."
+                          },
+                          "score": {
+                            "type": "number",
+                            "nullable": true,
+                            "description": "Overall NIRF score out of 100."
+                          },
+                          "tlr_score": {
+                            "type": "number",
+                            "nullable": true,
+                            "description": "Teaching, Learning and Resources sub-score."
+                          },
+                          "rpc_score": {
+                            "type": "number",
+                            "nullable": true,
+                            "description": "Research and Professional Practice sub-score."
+                          },
+                          "go_score": {
+                            "type": "number",
+                            "nullable": true,
+                            "description": "Graduation Outcomes sub-score."
+                          },
+                          "oi_score": {
+                            "type": "number",
+                            "nullable": true,
+                            "description": "Outreach and Inclusivity sub-score."
+                          },
+                          "perception_score": {
+                            "type": "number",
+                            "nullable": true,
+                            "description": "Perception sub-score."
+                          },
+                          "institute_name": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Full institute name, joined in for convenience."
+                          },
+                          "short_name": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Institute abbreviation, joined in for convenience."
+                          },
+                          "type": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Institute category, joined in for convenience."
+                          },
+                          "state": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Institute state, joined in for convenience."
+                          }
+                        }
+                      },
+                      "description": "The matching records."
+                    },
+                    "meta": {
+                      "type": "object",
+                      "description": "Pagination metadata.",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "description": "Total records matching the filters, ignoring limit and offset."
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "description": "Maximum records returned in this response."
+                        },
+                        "offset": {
+                          "type": "integer",
+                          "description": "Number of records skipped."
+                        },
+                        "has_more": {
+                          "type": "boolean",
+                          "description": "True when more records remain beyond this page."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "One or more query parameters were invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "One or more query parameters were invalid.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always false on an error response."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Human-readable description of what went wrong."
+                    },
+                    "statusCode": {
+                      "type": "integer",
+                      "description": "HTTP status code, repeated in the body for convenience."
+                    },
+                    "details": {
+                      "type": "array",
+                      "nullable": true,
+                      "description": "Per-field validation problems, present on 400 responses.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request did not reach the API through the RapidAPI proxy. Only returned by the hosted deployment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Request did not reach the API through the RapidAPI proxy. Only returned by the hosted deployment.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always false on an error response."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Human-readable description of what went wrong."
+                    },
+                    "statusCode": {
+                      "type": "integer",
+                      "description": "HTTP status code, repeated in the body for convenience."
+                    },
+                    "details": {
+                      "type": "array",
+                      "nullable": true,
+                      "description": "Per-field validation problems, present on 400 responses.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
     },
     "/api/v1/exams/{exam}/stats": {
       "get": {
+        "summary": "Get exam statistics by year",
+        "tags": [
+          "Exams"
+        ],
+        "description": "Returns registration, attendance and qualification counts plus score ranges for one exam, newest year first. Useful for showing how competitive a given year was. Add `?year=` to pin a single year.",
         "parameters": [
           {
             "schema": {
-              "type": "string"
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "year",
+            "required": false,
+            "description": "Restrict to a single exam year, e.g. 2025."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "jee_main",
+                "jee_advanced",
+                "neet"
+              ]
             },
             "in": "path",
             "name": "exam",
-            "required": true
+            "required": true,
+            "description": "Exam to fetch statistics for."
           }
         ],
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Exam statistics for the requested exam.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Exam statistics for the requested exam.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always true on a successful response."
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "description": "Unique exam statistic record ID."
+                          },
+                          "exam": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Exam identifier: jee_main, jee_advanced or neet."
+                          },
+                          "year": {
+                            "type": "integer",
+                            "nullable": true,
+                            "description": "Exam year."
+                          },
+                          "total_registered": {
+                            "type": "integer",
+                            "nullable": true,
+                            "description": "Candidates who registered."
+                          },
+                          "total_appeared": {
+                            "type": "integer",
+                            "nullable": true,
+                            "description": "Candidates who sat the exam."
+                          },
+                          "total_qualified": {
+                            "type": "integer",
+                            "nullable": true,
+                            "description": "Candidates who qualified."
+                          },
+                          "max_score": {
+                            "type": "number",
+                            "nullable": true,
+                            "description": "Highest score recorded."
+                          },
+                          "min_qualifying_score": {
+                            "type": "number",
+                            "nullable": true,
+                            "description": "Minimum qualifying score."
+                          },
+                          "avg_score": {
+                            "type": "number",
+                            "nullable": true,
+                            "description": "Average score across candidates."
+                          }
+                        }
+                      },
+                      "description": "Statistics per year, newest first."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The exam name or year was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "The exam name or year was invalid.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always false on an error response."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Human-readable description of what went wrong."
+                    },
+                    "statusCode": {
+                      "type": "integer",
+                      "description": "HTTP status code, repeated in the body for convenience."
+                    },
+                    "details": {
+                      "type": "array",
+                      "nullable": true,
+                      "description": "Per-field validation problems, present on 400 responses.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request did not reach the API through the RapidAPI proxy. Only returned by the hosted deployment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Request did not reach the API through the RapidAPI proxy. Only returned by the hosted deployment.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always false on an error response."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Human-readable description of what went wrong."
+                    },
+                    "statusCode": {
+                      "type": "integer",
+                      "description": "HTTP status code, repeated in the body for convenience."
+                    },
+                    "details": {
+                      "type": "array",
+                      "nullable": true,
+                      "description": "Per-field validation problems, present on 400 responses.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
     },
     "/api/v1/predict": {
       "get": {
+        "summary": "Predict which colleges a rank can get into",
+        "tags": [
+          "Predict"
+        ],
+        "description": "The flagship endpoint. Give it an exam, a rank and a category, and it returns every program the candidate has a realistic shot at, each with a confidence percentage derived from the most recent year of opening and closing ranks, plus a year-over-year trend. Results are sorted by confidence, then by NIRF rank. Optional filters narrow the list to a preferred state, institute type or branch.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "jee_advanced",
+                "jee_main",
+                "neet"
+              ]
+            },
+            "in": "query",
+            "name": "exam",
+            "required": true,
+            "description": "Exam the rank comes from."
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "in": "query",
+            "name": "rank",
+            "required": true,
+            "description": "The candidate's rank in that exam, e.g. 500."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "general",
+                "obc",
+                "sc",
+                "st",
+                "ews"
+              ]
+            },
+            "in": "query",
+            "name": "category",
+            "required": true,
+            "description": "Reservation category the rank belongs to."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "male",
+                "female"
+              ]
+            },
+            "in": "query",
+            "name": "gender",
+            "required": false,
+            "description": "Include female-only seats when set to female."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "preferred_state",
+            "required": false,
+            "description": "Only institutes in this state."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "preferred_type",
+            "required": false,
+            "description": "Only institutes of this category: IIT, NIT, IIIT, GFTI or Medical."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "preferred_branch",
+            "required": false,
+            "description": "Only programs matching this text, e.g. \"Computer Science\"."
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Ranked admission predictions for the given rank.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Ranked admission predictions for the given rank.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always true on a successful response."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "predictions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": true,
+                            "properties": {
+                              "institute": {
+                                "type": "object",
+                                "additionalProperties": true,
+                                "properties": {
+                                  "id": {
+                                    "type": "integer",
+                                    "description": "Unique institute ID. Use this with /api/v1/compare and /api/v1/colleges/{id}."
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "description": "Full official name, e.g. \"Indian Institute of Technology Bombay\"."
+                                  },
+                                  "short_name": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "Common abbreviation, e.g. \"IIT Bombay\"."
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "Institute category: IIT, NIT, IIIT, GFTI or Medical."
+                                  },
+                                  "state": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "State the institute is located in."
+                                  },
+                                  "city": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "City the institute is located in."
+                                  },
+                                  "nirf_rank": {
+                                    "type": "integer",
+                                    "nullable": true,
+                                    "description": "Most recent NIRF rank, or null if unranked."
+                                  },
+                                  "nirf_score": {
+                                    "type": "number",
+                                    "nullable": true,
+                                    "description": "Most recent NIRF score out of 100."
+                                  },
+                                  "website": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "Official website URL."
+                                  },
+                                  "established_year": {
+                                    "type": "integer",
+                                    "nullable": true,
+                                    "description": "Year the institute was founded."
+                                  }
+                                }
+                              },
+                              "program": {
+                                "type": "object",
+                                "additionalProperties": true,
+                                "properties": {
+                                  "id": {
+                                    "type": "integer",
+                                    "description": "Unique program ID."
+                                  },
+                                  "institute_id": {
+                                    "type": "integer",
+                                    "description": "ID of the institute offering this program."
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "description": "Program name, e.g. \"Computer Science and Engineering\"."
+                                  },
+                                  "degree": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "Degree awarded, e.g. \"B.Tech\", \"MBBS\"."
+                                  },
+                                  "duration_years": {
+                                    "type": "integer",
+                                    "nullable": true,
+                                    "description": "Program length in years."
+                                  },
+                                  "branch_code": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "Counselling branch code, where one exists."
+                                  },
+                                  "institute_name": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "Full institute name, joined in by /api/v1/search."
+                                  },
+                                  "institute_short_name": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "Institute abbreviation, joined in by /api/v1/search and /api/v1/compare."
+                                  }
+                                }
+                              },
+                              "confidence_pct": {
+                                "type": "integer",
+                                "description": "Estimated chance of admission, 0-99, from the rank against historical opening and closing ranks."
+                              },
+                              "last_year_closing_rank": {
+                                "type": "integer",
+                                "nullable": true,
+                                "description": "Closing rank in the most recent year on record."
+                              },
+                              "trend": {
+                                "type": "string",
+                                "description": "How the closing rank moved year over year: improving, stable or declining."
+                              },
+                              "nirf_rank": {
+                                "type": "integer",
+                                "description": "NIRF rank used as the tie-breaker when confidence is equal. 9999 means unranked."
+                              }
+                            }
+                          },
+                          "description": "Programs the rank has a chance at, most likely first."
+                        },
+                        "query": {
+                          "type": "object",
+                          "description": "The inputs the prediction was computed from.",
+                          "additionalProperties": true,
+                          "properties": {
+                            "exam": {
+                              "type": "string",
+                              "description": "Exam that was queried."
+                            },
+                            "rank": {
+                              "type": "integer",
+                              "description": "Rank that was queried."
+                            },
+                            "category": {
+                              "type": "string",
+                              "description": "Category that was queried."
+                            }
+                          }
+                        },
+                        "total_predictions": {
+                          "type": "integer",
+                          "description": "Number of predictions returned."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A required parameter was missing or invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "A required parameter was missing or invalid.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always false on an error response."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Human-readable description of what went wrong."
+                    },
+                    "statusCode": {
+                      "type": "integer",
+                      "description": "HTTP status code, repeated in the body for convenience."
+                    },
+                    "details": {
+                      "type": "array",
+                      "nullable": true,
+                      "description": "Per-field validation problems, present on 400 responses.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request did not reach the API through the RapidAPI proxy. Only returned by the hosted deployment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Request did not reach the API through the RapidAPI proxy. Only returned by the hosted deployment.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always false on an error response."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Human-readable description of what went wrong."
+                    },
+                    "statusCode": {
+                      "type": "integer",
+                      "description": "HTTP status code, repeated in the body for convenience."
+                    },
+                    "details": {
+                      "type": "array",
+                      "nullable": true,
+                      "description": "Per-field validation problems, present on 400 responses.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
     },
     "/api/v1/search": {
       "get": {
+        "summary": "Search institutes and programs by name",
+        "tags": [
+          "Search"
+        ],
+        "description": "A single free-text lookup across institutes (name, abbreviation, city) and programs (name). Returns up to 20 of each, which makes it a good fit for autocomplete and search boxes.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "description": "Search text, e.g. \"bombay\" or \"computer science\"."
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Institutes and programs matching the search text.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Institutes and programs matching the search text.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always true on a successful response."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "institutes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": true,
+                            "properties": {
+                              "id": {
+                                "type": "integer",
+                                "description": "Unique institute ID. Use this with /api/v1/compare and /api/v1/colleges/{id}."
+                              },
+                              "name": {
+                                "type": "string",
+                                "description": "Full official name, e.g. \"Indian Institute of Technology Bombay\"."
+                              },
+                              "short_name": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Common abbreviation, e.g. \"IIT Bombay\"."
+                              },
+                              "type": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Institute category: IIT, NIT, IIIT, GFTI or Medical."
+                              },
+                              "state": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "State the institute is located in."
+                              },
+                              "city": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "City the institute is located in."
+                              },
+                              "nirf_rank": {
+                                "type": "integer",
+                                "nullable": true,
+                                "description": "Most recent NIRF rank, or null if unranked."
+                              },
+                              "nirf_score": {
+                                "type": "number",
+                                "nullable": true,
+                                "description": "Most recent NIRF score out of 100."
+                              },
+                              "website": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Official website URL."
+                              },
+                              "established_year": {
+                                "type": "integer",
+                                "nullable": true,
+                                "description": "Year the institute was founded."
+                              }
+                            }
+                          },
+                          "description": "Up to 20 matching institutes."
+                        },
+                        "programs": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": true,
+                            "properties": {
+                              "id": {
+                                "type": "integer",
+                                "description": "Unique program ID."
+                              },
+                              "institute_id": {
+                                "type": "integer",
+                                "description": "ID of the institute offering this program."
+                              },
+                              "name": {
+                                "type": "string",
+                                "description": "Program name, e.g. \"Computer Science and Engineering\"."
+                              },
+                              "degree": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Degree awarded, e.g. \"B.Tech\", \"MBBS\"."
+                              },
+                              "duration_years": {
+                                "type": "integer",
+                                "nullable": true,
+                                "description": "Program length in years."
+                              },
+                              "branch_code": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Counselling branch code, where one exists."
+                              },
+                              "institute_name": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Full institute name, joined in by /api/v1/search."
+                              },
+                              "institute_short_name": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Institute abbreviation, joined in by /api/v1/search and /api/v1/compare."
+                              }
+                            }
+                          },
+                          "description": "Up to 20 matching programs, with their institute."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The q parameter was missing or empty.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "The q parameter was missing or empty.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always false on an error response."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Human-readable description of what went wrong."
+                    },
+                    "statusCode": {
+                      "type": "integer",
+                      "description": "HTTP status code, repeated in the body for convenience."
+                    },
+                    "details": {
+                      "type": "array",
+                      "nullable": true,
+                      "description": "Per-field validation problems, present on 400 responses.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request did not reach the API through the RapidAPI proxy. Only returned by the hosted deployment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Request did not reach the API through the RapidAPI proxy. Only returned by the hosted deployment.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always false on an error response."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Human-readable description of what went wrong."
+                    },
+                    "statusCode": {
+                      "type": "integer",
+                      "description": "HTTP status code, repeated in the body for convenience."
+                    },
+                    "details": {
+                      "type": "array",
+                      "nullable": true,
+                      "description": "Per-field validation problems, present on 400 responses.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
     },
     "/api/v1/compare": {
       "get": {
+        "summary": "Compare 2-5 institutes side by side",
+        "tags": [
+          "Compare"
+        ],
+        "description": "Takes a comma-separated list of institute IDs and returns, for each one, its details, its programs, its latest NIRF ranking and its latest placement record — the data a comparison table needs, in one call. Between 2 and 5 IDs are required.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "query",
+            "name": "ids",
+            "required": true,
+            "description": "Comma-separated institute IDs, between 2 and 5 of them, e.g. \"1,2,3\"."
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Side-by-side comparison of the requested institutes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Side-by-side comparison of the requested institutes.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always true on a successful response."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "comparison": {
+                          "type": "array",
+                          "description": "One entry per institute found, in the order the database returned them.",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "institute": {
+                                "type": "object",
+                                "additionalProperties": true,
+                                "properties": {
+                                  "id": {
+                                    "type": "integer",
+                                    "description": "Unique institute ID. Use this with /api/v1/compare and /api/v1/colleges/{id}."
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "description": "Full official name, e.g. \"Indian Institute of Technology Bombay\"."
+                                  },
+                                  "short_name": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "Common abbreviation, e.g. \"IIT Bombay\"."
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "Institute category: IIT, NIT, IIIT, GFTI or Medical."
+                                  },
+                                  "state": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "State the institute is located in."
+                                  },
+                                  "city": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "City the institute is located in."
+                                  },
+                                  "nirf_rank": {
+                                    "type": "integer",
+                                    "nullable": true,
+                                    "description": "Most recent NIRF rank, or null if unranked."
+                                  },
+                                  "nirf_score": {
+                                    "type": "number",
+                                    "nullable": true,
+                                    "description": "Most recent NIRF score out of 100."
+                                  },
+                                  "website": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "Official website URL."
+                                  },
+                                  "established_year": {
+                                    "type": "integer",
+                                    "nullable": true,
+                                    "description": "Year the institute was founded."
+                                  }
+                                }
+                              },
+                              "programs": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "additionalProperties": true,
+                                  "properties": {
+                                    "id": {
+                                      "type": "integer",
+                                      "description": "Unique program ID."
+                                    },
+                                    "institute_id": {
+                                      "type": "integer",
+                                      "description": "ID of the institute offering this program."
+                                    },
+                                    "name": {
+                                      "type": "string",
+                                      "description": "Program name, e.g. \"Computer Science and Engineering\"."
+                                    },
+                                    "degree": {
+                                      "type": "string",
+                                      "nullable": true,
+                                      "description": "Degree awarded, e.g. \"B.Tech\", \"MBBS\"."
+                                    },
+                                    "duration_years": {
+                                      "type": "integer",
+                                      "nullable": true,
+                                      "description": "Program length in years."
+                                    },
+                                    "branch_code": {
+                                      "type": "string",
+                                      "nullable": true,
+                                      "description": "Counselling branch code, where one exists."
+                                    },
+                                    "institute_name": {
+                                      "type": "string",
+                                      "nullable": true,
+                                      "description": "Full institute name, joined in by /api/v1/search."
+                                    },
+                                    "institute_short_name": {
+                                      "type": "string",
+                                      "nullable": true,
+                                      "description": "Institute abbreviation, joined in by /api/v1/search and /api/v1/compare."
+                                    }
+                                  }
+                                },
+                                "description": "Every program the institute offers."
+                              },
+                              "latest_nirf": {
+                                "type": "object",
+                                "additionalProperties": true,
+                                "properties": {
+                                  "id": {
+                                    "type": "integer",
+                                    "description": "Unique ranking record ID."
+                                  },
+                                  "institute_id": {
+                                    "type": "integer",
+                                    "description": "ID of the ranked institute."
+                                  },
+                                  "year": {
+                                    "type": "integer",
+                                    "nullable": true,
+                                    "description": "Ranking year."
+                                  },
+                                  "category": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "Ranking category: engineering, medical, overall, pharmacy or management."
+                                  },
+                                  "rank": {
+                                    "type": "integer",
+                                    "nullable": true,
+                                    "description": "Position in the ranking for that year and category."
+                                  },
+                                  "score": {
+                                    "type": "number",
+                                    "nullable": true,
+                                    "description": "Overall NIRF score out of 100."
+                                  },
+                                  "tlr_score": {
+                                    "type": "number",
+                                    "nullable": true,
+                                    "description": "Teaching, Learning and Resources sub-score."
+                                  },
+                                  "rpc_score": {
+                                    "type": "number",
+                                    "nullable": true,
+                                    "description": "Research and Professional Practice sub-score."
+                                  },
+                                  "go_score": {
+                                    "type": "number",
+                                    "nullable": true,
+                                    "description": "Graduation Outcomes sub-score."
+                                  },
+                                  "oi_score": {
+                                    "type": "number",
+                                    "nullable": true,
+                                    "description": "Outreach and Inclusivity sub-score."
+                                  },
+                                  "perception_score": {
+                                    "type": "number",
+                                    "nullable": true,
+                                    "description": "Perception sub-score."
+                                  },
+                                  "institute_name": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "Full institute name, joined in for convenience."
+                                  },
+                                  "short_name": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "Institute abbreviation, joined in for convenience."
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "Institute category, joined in for convenience."
+                                  },
+                                  "state": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "Institute state, joined in for convenience."
+                                  }
+                                },
+                                "nullable": true,
+                                "description": "Most recent NIRF ranking, or null if unranked."
+                              },
+                              "latest_placement": {
+                                "type": "object",
+                                "additionalProperties": true,
+                                "properties": {
+                                  "id": {
+                                    "type": "integer",
+                                    "description": "Unique placement record ID."
+                                  },
+                                  "institute_id": {
+                                    "type": "integer",
+                                    "description": "ID of the institute."
+                                  },
+                                  "year": {
+                                    "type": "integer",
+                                    "nullable": true,
+                                    "description": "Placement season year."
+                                  },
+                                  "program_or_dept": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "Program or department the figures cover."
+                                  },
+                                  "students_placed_pct": {
+                                    "type": "number",
+                                    "nullable": true,
+                                    "description": "Share of eligible students placed, as a percentage."
+                                  },
+                                  "median_salary": {
+                                    "type": "number",
+                                    "nullable": true,
+                                    "description": "Median annual package in INR."
+                                  },
+                                  "average_salary": {
+                                    "type": "number",
+                                    "nullable": true,
+                                    "description": "Average annual package in INR."
+                                  },
+                                  "highest_salary": {
+                                    "type": "number",
+                                    "nullable": true,
+                                    "description": "Highest annual package in INR."
+                                  },
+                                  "top_recruiters": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "JSON-encoded array of recruiter names."
+                                  }
+                                },
+                                "nullable": true,
+                                "description": "Most recent placement record, or null if none."
+                              }
+                            }
+                          }
+                        },
+                        "count": {
+                          "type": "integer",
+                          "description": "Number of institutes in the comparison."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Fewer than 2 or more than 5 valid IDs were supplied.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Fewer than 2 or more than 5 valid IDs were supplied.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always false on an error response."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Human-readable description of what went wrong."
+                    },
+                    "statusCode": {
+                      "type": "integer",
+                      "description": "HTTP status code, repeated in the body for convenience."
+                    },
+                    "details": {
+                      "type": "array",
+                      "nullable": true,
+                      "description": "Per-field validation problems, present on 400 responses.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request did not reach the API through the RapidAPI proxy. Only returned by the hosted deployment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Request did not reach the API through the RapidAPI proxy. Only returned by the hosted deployment.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always false on an error response."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Human-readable description of what went wrong."
+                    },
+                    "statusCode": {
+                      "type": "integer",
+                      "description": "HTTP status code, repeated in the body for convenience."
+                    },
+                    "details": {
+                      "type": "array",
+                      "nullable": true,
+                      "description": "Per-field validation problems, present on 400 responses.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "None of the supplied IDs matched an institute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "None of the supplied IDs matched an institute.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always false on an error response."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Human-readable description of what went wrong."
+                    },
+                    "statusCode": {
+                      "type": "integer",
+                      "description": "HTTP status code, repeated in the body for convenience."
+                    },
+                    "details": {
+                      "type": "array",
+                      "nullable": true,
+                      "description": "Per-field validation problems, present on 400 responses.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
     },
     "/api/v1/stats": {
       "get": {
+        "summary": "Get dataset coverage counts",
+        "tags": [
+          "Stats"
+        ],
+        "description": "Returns how much data the API currently holds: record counts per table, which exams are covered, the span of years, and a breakdown of institutes by category. Call it to show coverage in a UI, or to check what is available before querying.",
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Coverage counts for the dataset.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Coverage counts for the dataset.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always true on a successful response."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "total_institutes": {
+                          "type": "integer",
+                          "description": "Institutes in the dataset."
+                        },
+                        "total_programs": {
+                          "type": "integer",
+                          "description": "Programs across all institutes."
+                        },
+                        "total_cutoff_records": {
+                          "type": "integer",
+                          "description": "Individual cutoff records."
+                        },
+                        "total_placement_records": {
+                          "type": "integer",
+                          "description": "Individual placement records."
+                        },
+                        "total_nirf_rankings": {
+                          "type": "integer",
+                          "description": "Individual NIRF ranking records."
+                        },
+                        "exams_covered": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Exam identifiers with cutoff data available."
+                        },
+                        "year_range": {
+                          "type": "object",
+                          "description": "Span of admission years covered by the cutoff data.",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "nullable": true,
+                              "description": "Earliest year on record."
+                            },
+                            "to": {
+                              "type": "integer",
+                              "nullable": true,
+                              "description": "Latest year on record."
+                            }
+                          }
+                        },
+                        "institute_breakdown": {
+                          "type": "array",
+                          "description": "Institute counts per category, largest first.",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": true,
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Institute category."
+                              },
+                              "count": {
+                                "type": "integer",
+                                "description": "Institutes in that category."
+                              }
+                            }
+                          }
+                        },
+                        "last_updated": {
+                          "type": "string",
+                          "description": "ISO 8601 timestamp of when this response was generated."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request did not reach the API through the RapidAPI proxy. Only returned by the hosted deployment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Request did not reach the API through the RapidAPI proxy. Only returned by the hosted deployment.",
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Always false on an error response."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Human-readable description of what went wrong."
+                    },
+                    "statusCode": {
+                      "type": "integer",
+                      "description": "HTTP status code, repeated in the body for convenience."
+                    },
+                    "details": {
+                      "type": "array",
+                      "nullable": true,
+                      "description": "Per-field validation problems, present on 400 responses.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -172,8 +2912,8 @@
   },
   "servers": [
     {
-      "url": "https://edusearch-api.onrender.com",
-      "description": "Production Server"
+      "url": "http://localhost:3000",
+      "description": "Development"
     }
   ],
   "tags": [
@@ -200,6 +2940,18 @@
     {
       "name": "Search",
       "description": "Search across data"
+    },
+    {
+      "name": "Compare",
+      "description": "Side-by-side institute comparison"
+    },
+    {
+      "name": "Stats",
+      "description": "Dataset coverage"
+    },
+    {
+      "name": "Meta",
+      "description": "Service metadata and health"
     }
   ]
 }

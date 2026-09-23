@@ -29,3 +29,20 @@ export function envelopeSingle<T>(data: T) {
     data,
   };
 }
+
+/**
+ * Wraps an error in the same envelope shape as successful responses, so
+ * consumers can branch on `success` without special-casing failures.
+ */
+export function errorEnvelope(
+  statusCode: number,
+  error: string,
+  details?: unknown[]
+) {
+  return {
+    success: false,
+    error,
+    statusCode,
+    ...(details ? { details } : {}),
+  };
+}

@@ -21,6 +21,32 @@ EduSearch API provides structured, queryable access to Indian education data tha
 | `GET /api/v1/predict` | **⭐ College admission predictor** — input rank, get colleges |
 | `GET /api/v1/search` | Search across all data |
 | `GET /api/v1/compare` | Side-by-side college comparison |
+| `GET /api/v1/stats` | Dataset coverage counts |
+
+Every endpoint is documented with its parameters and response shape in `openapi.json`, which is what the RapidAPI listing is built from. Browse the same docs interactively at `/docs`.
+
+## 📨 Response Format
+
+Successful list responses are paginated and wrapped in an envelope:
+
+```json
+{
+  "success": true,
+  "data": [ ... ],
+  "meta": { "total": 8128, "limit": 50, "offset": 0, "has_more": true }
+}
+```
+
+Errors use the same envelope, so clients can branch on `success` alone:
+
+```json
+{
+  "success": false,
+  "error": "querystring/year must be integer",
+  "statusCode": 400,
+  "details": [ ... ]
+}
+```
 
 ## ⭐ Killer Feature: `/predict`
 
@@ -53,7 +79,15 @@ npm run dev
 # Build for production
 npm run build
 npm start
+
+# Regenerate openapi.json from the route schemas
+npm run spec
 ```
+
+`openapi.json` is generated, not hand-edited — run `npm run spec` after changing
+any route schema and commit the result. Set `PUBLIC_URL` to the deployed base URL
+so the spec advertises it instead of localhost; on Render this is picked up from
+`RENDER_EXTERNAL_URL` automatically.
 
 ## 📦 Data Coverage
 

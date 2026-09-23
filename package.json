@@ -10,7 +10,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "seed": "tsx src/db/seed.ts",
-    "scrape": "tsx src/scrape/index.ts"
+    "spec": "tsx src/scripts/generate-openapi.ts"
   },
   "dependencies": {
     "@fastify/cors": "^9.0.0",

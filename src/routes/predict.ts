@@ -1,7 +1,8 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { db } from '../db/database.js';
-import { envelopeSingle } from '../utils/envelope.js';
+import { envelopeSingle, errorEnvelope } from '../utils/envelope.js';
+import { predictionSchema, objectResponse, errorResponse } from '../schemas/common.js';
 
 const predictQuerySchema = z.object({
   exam: z.enum(['jee_advanced', 'jee_main', 'neet']),
@@ -13,8 +14,69 @@ const predictQuerySchema = z.object({
   preferred_branch: z.string().optional(),
 });
 
+
+const routeSchema = {
+  tags: ['Predict'],
+  summary: 'Predict which colleges a rank can get into',
+  description:
+    'The flagship endpoint. Give it an exam, a rank and a category, and it returns every program the candidate has a realistic shot at, each with a confidence percentage derived from the most recent year of opening and closing ranks, plus a year-over-year trend. Results are sorted by confidence, then by NIRF rank. Optional filters narrow the list to a preferred state, institute type or branch.',
+  querystring: {
+    type: 'object',
+    required: ['exam', 'rank', 'category'],
+    properties: {
+      exam: {
+        type: 'string',
+        enum: ['jee_advanced', 'jee_main', 'neet'],
+        description: 'Exam the rank comes from.',
+      },
+      rank: { type: 'integer', minimum: 1, description: 'The candidate\'s rank in that exam, e.g. 500.' },
+      category: {
+        type: 'string',
+        enum: ['general', 'obc', 'sc', 'st', 'ews'],
+        description: 'Reservation category the rank belongs to.',
+      },
+      gender: {
+        type: 'string',
+        enum: ['male', 'female'],
+        description: 'Include female-only seats when set to female.',
+      },
+      preferred_state: { type: 'string', description: 'Only institutes in this state.' },
+      preferred_type: { type: 'string', description: 'Only institutes of this category: IIT, NIT, IIIT, GFTI or Medical.' },
+      preferred_branch: { type: 'string', description: 'Only programs matching this text, e.g. "Computer Science".' },
+    },
+  },
+  response: {
+    200: objectResponse(
+      {
+        type: 'object',
+        properties: {
+          predictions: {
+            type: 'array',
+            items: predictionSchema,
+            description: 'Programs the rank has a chance at, most likely first.',
+          },
+          query: {
+            type: 'object',
+            description: 'The inputs the prediction was computed from.',
+            additionalProperties: true,
+            properties: {
+              exam: { type: 'string', description: 'Exam that was queried.' },
+              rank: { type: 'integer', description: 'Rank that was queried.' },
+              category: { type: 'string', description: 'Category that was queried.' },
+            },
+          },
+          total_predictions: { type: 'integer', description: 'Number of predictions returned.' },
+        },
+      },
+      'Ranked admission predictions for the given rank.'
+    ),
+    400: errorResponse('A required parameter was missing or invalid.'),
+    403: errorResponse('Request did not reach the API through the RapidAPI proxy. Only returned by the hosted deployment.'),
+  },
+};
+
 export default async function(fastify: FastifyInstance) {
-  fastify.get('/api/v1/predict', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/api/v1/predict', { schema: routeSchema }, async (request: FastifyRequest, reply: FastifyReply) => {
     const startTime = process.hrtime.bigint();
     try {
       const query = predictQuerySchema.parse(request.query);
@@ -113,8 +175,8 @@ export default async function(fastify: FastifyInstance) {
       reply.header('x-response-time', `${Number(endTime - startTime) / 1e6}ms`);
       return envelopeSingle({ predictions: results, query: { exam: query.exam, rank: query.rank, category: query.category }, total_predictions: results.length });
     } catch (error) {
-      if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation Error', statusCode: 400 });
-      return reply.status(500).send({ error: 'Internal Server Error', statusCode: 500 });
+      if (error instanceof z.ZodError) return reply.status(400).send(errorEnvelope(400, 'Validation Error', error.errors));
+      return reply.status(500).send(errorEnvelope(500, 'Internal Server Error'));
     }
   });
 }

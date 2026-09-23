@@ -1,8 +1,58 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { db } from '../db/database.js';
+import { objectResponse, errorResponse } from '../schemas/common.js';
+
+const routeSchema = {
+  tags: ['Stats'],
+  summary: 'Get dataset coverage counts',
+  description:
+    'Returns how much data the API currently holds: record counts per table, which exams are covered, the span of years, and a breakdown of institutes by category. Call it to show coverage in a UI, or to check what is available before querying.',
+  response: {
+    200: objectResponse(
+      {
+        type: 'object',
+        properties: {
+          total_institutes: { type: 'integer', description: 'Institutes in the dataset.' },
+          total_programs: { type: 'integer', description: 'Programs across all institutes.' },
+          total_cutoff_records: { type: 'integer', description: 'Individual cutoff records.' },
+          total_placement_records: { type: 'integer', description: 'Individual placement records.' },
+          total_nirf_rankings: { type: 'integer', description: 'Individual NIRF ranking records.' },
+          exams_covered: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Exam identifiers with cutoff data available.',
+          },
+          year_range: {
+            type: 'object',
+            description: 'Span of admission years covered by the cutoff data.',
+            properties: {
+              from: { type: 'integer', nullable: true, description: 'Earliest year on record.' },
+              to: { type: 'integer', nullable: true, description: 'Latest year on record.' },
+            },
+          },
+          institute_breakdown: {
+            type: 'array',
+            description: 'Institute counts per category, largest first.',
+            items: {
+              type: 'object',
+              additionalProperties: true,
+              properties: {
+                type: { type: 'string', nullable: true, description: 'Institute category.' },
+                count: { type: 'integer', description: 'Institutes in that category.' },
+              },
+            },
+          },
+          last_updated: { type: 'string', description: 'ISO 8601 timestamp of when this response was generated.' },
+        },
+      },
+      'Coverage counts for the dataset.'
+    ),
+    403: errorResponse('Request did not reach the API through the RapidAPI proxy. Only returned by the hosted deployment.'),
+  },
+};
 
 export default async function(fastify: FastifyInstance) {
-  fastify.get('/api/v1/stats', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/api/v1/stats', { schema: routeSchema }, async (request: FastifyRequest, reply: FastifyReply) => {
     const startTime = process.hrtime.bigint();
 
     const institutes = (db.prepare(`SELECT COUNT(*) as count FROM institutes`).get() as any).count;

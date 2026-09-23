@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS nirf_rankings (
     oi_score REAL,
     perception_score REAL,
     nirf_id TEXT,             -- NIRF's own institute ID, e.g. IR-E-U-0456
-    source TEXT NOT NULL,     -- 'nirf' (official) or 'synthetic'
+    source TEXT NOT NULL,     -- 'nirf' (official)
     FOREIGN KEY(institute_id) REFERENCES institutes(id)
 );
 
@@ -73,19 +73,6 @@ CREATE TABLE IF NOT EXISTS placements (
     top_recruiters TEXT,      -- JSON string; NIRF reports do not include recruiters
     source TEXT NOT NULL,     -- 'nirf' (official institute data report)
     FOREIGN KEY(institute_id) REFERENCES institutes(id)
-);
-
-CREATE TABLE IF NOT EXISTS exam_stats (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    exam TEXT,
-    year INTEGER,
-    total_registered INTEGER,
-    total_appeared INTEGER,
-    total_qualified INTEGER,
-    max_score REAL,
-    min_qualifying_score REAL,
-    avg_score REAL,
-    source TEXT NOT NULL      -- 'synthetic' until an official source is imported
 );
 
 -- Indexes

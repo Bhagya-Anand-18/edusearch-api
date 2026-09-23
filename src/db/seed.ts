@@ -1,6 +1,6 @@
 /**
  * Builds the database from committed snapshots of official data, topped up
- * with clearly labelled synthetic data where no official source is imported yet.
+ * (See each section for its source.)
  *
  *   Official:
  *     - Engineering institutes, programs and JEE cutoffs from data/official/josaa
@@ -9,8 +9,6 @@
  *       MCC round-1 allotment results (source = 'mcc_derived')
  *     - NIRF rankings and placement figures from data/official/nirf
  *       (nirfindia.org rankings and institute data reports; source = 'nirf')
- *   Synthetic (source = 'synthetic'):
- *     - Exam statistics, the one dataset with no official import yet
  *
  * This never touches the network, so it is safe to run on every build. Refresh
  * the snapshots with the fetch:* scripts.
@@ -233,7 +231,7 @@ const seed = () => {
     DROP TABLE IF EXISTS nirf_rankings;
     DROP TABLE IF EXISTS programs;
     DROP TABLE IF EXISTS institutes;
-    DROP TABLE IF EXISTS exam_stats;
+    DROP TABLE IF EXISTS exam_stats; -- retired: it only ever held synthetic numbers
   `);
   db.exec(schema);
 
@@ -500,15 +498,6 @@ const seed = () => {
     }
     report.push(`NIRF: ${placementCount} placement records for ${placementInstitutes} institutes`);
 
-    // --- Synthetic: exam statistics ----------------------------------------
-    const insertExamStat = db.prepare(`
-      INSERT INTO exam_stats (exam, year, total_registered, total_appeared, total_qualified, max_score, min_qualifying_score, avg_score, source)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'synthetic')
-    `);
-    insertExamStat.run('jee_main', 2025, 1200000, 1000000, 250000, 300, 93.2, 55.4);
-    insertExamStat.run('jee_advanced', 2025, 200000, 180000, 40000, 360, 86.0, 45.0);
-    insertExamStat.run('neet', 2025, 2400000, 2200000, 1000000, 720, 164.0, 250.0);
-    report.push('Synthetic: 3 exam statistic records');
   })();
 
   for (const line of report) logger.info(line);

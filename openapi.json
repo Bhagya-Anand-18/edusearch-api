@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "EduSearch API",
-    "description": "Indian education data API — JEE/NEET cutoffs, NIRF rankings, college data, placements, and admission predictions.\n\n**JEE cutoffs (JoSAA, 2022-2025), NIRF rankings (2023-2025) and placement figures (NIRF institute data reports) are official. NEET rank ranges (2022-2025) are derived from official MCC round-1 allotments. Exam statistics are synthetic sample data, marked source: \"synthetic\".**",
+    "description": "Indian education data API — JEE/NEET cutoffs, NIRF rankings, college data, placements, and admission predictions.\n\n**JEE cutoffs (JoSAA, 2022-2025), NIRF rankings (2023-2025) and placement figures (NIRF institute data reports) are official. NEET rank ranges (2022-2025) are derived from official MCC round-1 allotment results.**",
     "version": "1.0.0",
     "contact": {
       "name": "EduSearch API"
@@ -918,7 +918,7 @@
                               },
                               "source": {
                                 "type": "string",
-                                "description": "Where this record comes from: \"nirf\" for official data, or \"synthetic\" for generated sample data."
+                                "description": "Where this record comes from: \"nirf\", an official source."
                               },
                               "institute_name": {
                                 "type": "string",
@@ -1686,7 +1686,7 @@
                           },
                           "source": {
                             "type": "string",
-                            "description": "Where this record comes from: \"nirf\" for official data, or \"synthetic\" for generated sample data."
+                            "description": "Where this record comes from: \"nirf\", an official source."
                           },
                           "institute_name": {
                             "type": "string",
@@ -1745,185 +1745,6 @@
               "application/json": {
                 "schema": {
                   "description": "One or more query parameters were invalid.",
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "description": "Always false on an error response."
-                    },
-                    "error": {
-                      "type": "string",
-                      "description": "Human-readable description of what went wrong."
-                    },
-                    "statusCode": {
-                      "type": "integer",
-                      "description": "HTTP status code, repeated in the body for convenience."
-                    },
-                    "details": {
-                      "type": "array",
-                      "nullable": true,
-                      "description": "Per-field validation problems, present on 400 responses.",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": true
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Request did not reach the API through the RapidAPI proxy. Only returned by the hosted deployment.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "description": "Request did not reach the API through the RapidAPI proxy. Only returned by the hosted deployment.",
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "description": "Always false on an error response."
-                    },
-                    "error": {
-                      "type": "string",
-                      "description": "Human-readable description of what went wrong."
-                    },
-                    "statusCode": {
-                      "type": "integer",
-                      "description": "HTTP status code, repeated in the body for convenience."
-                    },
-                    "details": {
-                      "type": "array",
-                      "nullable": true,
-                      "description": "Per-field validation problems, present on 400 responses.",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": true
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/exams/{exam}/stats": {
-      "get": {
-        "summary": "Get exam statistics by year",
-        "tags": [
-          "Exams"
-        ],
-        "description": "Returns registration, attendance and qualification counts plus score ranges for one exam, newest year first. Useful for showing how competitive a given year was. Add `?year=` to pin a single year.",
-        "parameters": [
-          {
-            "schema": {
-              "type": "integer"
-            },
-            "in": "query",
-            "name": "year",
-            "required": false,
-            "description": "Restrict to a single exam year, e.g. 2025."
-          },
-          {
-            "schema": {
-              "type": "string",
-              "enum": [
-                "jee_main",
-                "jee_advanced",
-                "neet"
-              ]
-            },
-            "in": "path",
-            "name": "exam",
-            "required": true,
-            "description": "Exam to fetch statistics for."
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Exam statistics for the requested exam.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "description": "Exam statistics for the requested exam.",
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "description": "Always true on a successful response."
-                    },
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": true,
-                        "properties": {
-                          "id": {
-                            "type": "integer",
-                            "description": "Unique exam statistic record ID."
-                          },
-                          "exam": {
-                            "type": "string",
-                            "nullable": true,
-                            "description": "Exam identifier: jee_main, jee_advanced or neet."
-                          },
-                          "year": {
-                            "type": "integer",
-                            "nullable": true,
-                            "description": "Exam year."
-                          },
-                          "total_registered": {
-                            "type": "integer",
-                            "nullable": true,
-                            "description": "Candidates who registered."
-                          },
-                          "total_appeared": {
-                            "type": "integer",
-                            "nullable": true,
-                            "description": "Candidates who sat the exam."
-                          },
-                          "total_qualified": {
-                            "type": "integer",
-                            "nullable": true,
-                            "description": "Candidates who qualified."
-                          },
-                          "max_score": {
-                            "type": "number",
-                            "nullable": true,
-                            "description": "Highest score recorded."
-                          },
-                          "min_qualifying_score": {
-                            "type": "number",
-                            "nullable": true,
-                            "description": "Minimum qualifying score."
-                          },
-                          "avg_score": {
-                            "type": "number",
-                            "nullable": true,
-                            "description": "Average score across candidates."
-                          },
-                          "source": {
-                            "type": "string",
-                            "description": "Where this record comes from. Currently always \"synthetic\" (generated sample data): no official exam statistics are imported yet."
-                          }
-                        }
-                      },
-                      "description": "Statistics per year, newest first."
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The exam name or year was invalid.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "description": "The exam name or year was invalid.",
                   "type": "object",
                   "properties": {
                     "success": {
@@ -2249,7 +2070,7 @@
                               },
                               "source": {
                                 "type": "string",
-                                "description": "Where this record comes from: \"josaa\" for official data, or \"synthetic\" for generated sample data."
+                                "description": "Where this record comes from: \"josaa\", an official source."
                               },
                               "trend": {
                                 "type": "string",
@@ -2807,7 +2628,7 @@
                                   },
                                   "source": {
                                     "type": "string",
-                                    "description": "Where this record comes from: \"nirf\" for official data, or \"synthetic\" for generated sample data."
+                                    "description": "Where this record comes from: \"nirf\", an official source."
                                   },
                                   "institute_name": {
                                     "type": "string",
@@ -3123,7 +2944,7 @@
                             "official",
                             "mixed"
                           ],
-                          "description": "Overall provenance: \"mixed\" means some datasets are official and some synthetic. See `sources` for the breakdown."
+                          "description": "Overall provenance: \"official\" when every dataset comes from an official source. See `sources` for the breakdown."
                         },
                         "sources": {
                           "type": "array",
@@ -3133,7 +2954,7 @@
                             "properties": {
                               "dataset": {
                                 "type": "string",
-                                "description": "cutoffs, nirf_rankings, placements or exam_stats."
+                                "description": "cutoffs, nirf_rankings or placements."
                               },
                               "exam": {
                                 "type": "string",
@@ -3142,7 +2963,7 @@
                               },
                               "source": {
                                 "type": "string",
-                                "description": "josaa, nirf or synthetic."
+                                "description": "josaa, mcc_derived or nirf."
                               },
                               "official": {
                                 "type": "boolean",
@@ -3216,6 +3037,10 @@
   },
   "servers": [
     {
+      "url": "https://edusearch-api.onrender.com",
+      "description": "Production"
+    },
+    {
       "url": "http://localhost:3000",
       "description": "Development"
     }
@@ -3232,10 +3057,6 @@
     {
       "name": "Rankings",
       "description": "NIRF rankings"
-    },
-    {
-      "name": "Exams",
-      "description": "Exam statistics"
     },
     {
       "name": "Predict",

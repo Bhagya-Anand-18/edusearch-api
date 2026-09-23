@@ -2,7 +2,7 @@
 
 **Indian Education Data API** — JEE/NEET cutoffs, NIRF rankings, college data, placements, and admission predictions.
 
-> **Data status.** JEE cutoffs come from **JoSAA**, NEET rank ranges from **MCC** allotment results, and NIRF rankings and placement figures from **NIRF** — all official sources. Exam statistics are the one dataset still **synthetic**. Every record carries a `source` field (`josaa`, `mcc_derived`, `nirf` or `synthetic`), and `GET /api/v1/stats` reports the breakdown per dataset.
+> **Data status.** Every dataset comes from an official source: JEE cutoffs from **JoSAA**, NEET rank ranges from **MCC** allotment results, and NIRF rankings and placement figures from **NIRF**. Every record carries a `source` field (`josaa`, `mcc_derived` or `nirf`), and `GET /api/v1/stats` reports the breakdown per dataset.
 
 [![RapidAPI](https://img.shields.io/badge/RapidAPI-EduSearch-blue)](https://rapidapi.com)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
@@ -19,7 +19,6 @@ EduSearch API provides structured, queryable access to Indian education data tha
 | `GET /api/v1/colleges` | Search and filter 613 institutes — every JoSAA engineering institute and every MCC all-India-quota medical college |
 | `GET /api/v1/colleges/:id` | Detailed college info with programs & placements |
 | `GET /api/v1/rankings/nirf` | NIRF rankings by year and category |
-| `GET /api/v1/exams/:exam/stats` | Exam statistics (registered, qualified, scores) |
 | `GET /api/v1/predict` | **⭐ College admission predictor** — input rank, get colleges |
 | `GET /api/v1/search` | Search across all data |
 | `GET /api/v1/compare` | Side-by-side college comparison |
@@ -99,6 +98,15 @@ has drifted from the routes. Set `PUBLIC_URL` to the deployed base URL
 so the spec advertises it instead of localhost; on Render this is picked up from
 `RENDER_EXTERNAL_URL` automatically.
 
+## 🚀 Going Live on RapidAPI
+
+The API is deployed on Render from `render.yaml`; every push to `main` rebuilds it, including the database, from the committed snapshots.
+
+1. **Create the API on RapidAPI** (Provider dashboard → Add API) and import `openapi.json`, or point it at `https://edusearch-api.onrender.com/docs/json`. Set the base URL to `https://edusearch-api.onrender.com`.
+2. **Copy the proxy secret** from the API's Security settings on RapidAPI (`X-RapidAPI-Proxy-Secret`).
+3. **Set it on Render**: service → Environment → add `RAPIDAPI_PROXY_SECRET`. Until it is set, the production API answers every data request with `503` — it fails closed, so it can never be used for free by calling Render directly. `/health` and `/docs` stay open.
+4. **Set the plans** on RapidAPI's Monetize tab (see Pricing below; RapidAPI bills in USD).
+
 ## 📦 Data Coverage
 
 | Dataset | Source | Coverage |
@@ -109,7 +117,6 @@ so the spec advertises it instead of localhost; on Render this is picked up from
 | NIRF rankings | **Official** — [nirfindia.org](https://www.nirfindia.org) | 2023-2025, engineering (top 100) and medical (top 50), with all five parameter scores, for institutes in our coverage |
 | Placements | **Official** — NIRF institute data reports | Graduates, placed, median salary and higher studies for the three latest batches per program block (mostly graduating 2022-2024), 77 NIRF-ranked institutes |
 | Institutes | JoSAA, MCC, NIRF and curated metadata | 613 institutes; 1,500+ programs |
-| Exam statistics | Synthetic | 2025 only |
 
 **About NEET ranges.** MCC publishes who was allotted which seat, not cutoffs. The opening and closing ranks here are the best and worst all-India rank allotted to each seat group (college, course, quota, category, PwD and gender) in round 1, and carry `source: "mcc_derived"` to say so. Later rounds, where closing ranks rise further, use a different PDF layout and are not imported yet.
 

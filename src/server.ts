@@ -10,7 +10,6 @@ import { errorEnvelope } from './utils/envelope.js';
 import cutoffsRoutes from './routes/cutoffs.js';
 import collegesRoutes from './routes/colleges.js';
 import rankingsRoutes from './routes/rankings.js';
-import examsRoutes from './routes/exams.js';
 import predictRoutes from './routes/predict.js';
 import searchRoutes from './routes/search.js';
 import compareRoutes from './routes/compare.js';
@@ -45,7 +44,6 @@ export const buildServer = async () => {
         { name: 'Cutoffs', description: 'JEE/NEET cutoff data' },
         { name: 'Colleges', description: 'Institute information' },
         { name: 'Rankings', description: 'NIRF rankings' },
-        { name: 'Exams', description: 'Exam statistics' },
         { name: 'Predict', description: 'College admission prediction' },
         { name: 'Search', description: 'Search across data' },
         { name: 'Compare', description: 'Side-by-side institute comparison' },
@@ -81,13 +79,24 @@ export const buildServer = async () => {
     return { status: 'ok', timestamp: new Date().toISOString(), version: '1.0.0' };
   });
 
-  // RapidAPI proxy authentication (production only)
-  // This ensures requests come through RapidAPI's proxy, not directly to our server
-  if (config.NODE_ENV === 'production' && config.RAPIDAPI_PROXY_SECRET) {
+  // RapidAPI proxy authentication (production only). Requests must come through
+  // RapidAPI's proxy, which adds the secret header, so usage is metered and billed.
+  // Fails closed: a production deploy without the secret refuses API requests
+  // rather than serving them to anyone for free.
+  if (config.NODE_ENV === 'production') {
+    if (!config.RAPIDAPI_PROXY_SECRET) {
+      logger.error('RAPIDAPI_PROXY_SECRET is not set: API requests will be refused until it is.');
+    }
     server.addHook('onRequest', async (request, reply) => {
       // Skip auth for health check and docs
       if (request.url === '/health' || request.url.startsWith('/docs')) return;
-      
+
+      if (!config.RAPIDAPI_PROXY_SECRET) {
+        reply.status(503).send(
+          errorEnvelope(503, 'API not configured: the RAPIDAPI_PROXY_SECRET environment variable is not set.')
+        );
+        return;
+      }
       const proxySecret = request.headers['x-rapidapi-proxy-secret'];
       if (proxySecret !== config.RAPIDAPI_PROXY_SECRET) {
         reply.status(403).send(
@@ -126,7 +135,7 @@ export const buildServer = async () => {
     return {
       name: 'EduSearch API',
       version: '1.0.0',
-      description: 'Indian Education Data API — JEE/NEET cutoffs, NIRF rankings, college predictions',
+      description: 'Indian Education Data API — official JEE and NEET cutoffs, NIRF rankings, placements and admission predictions',
       data_source: DATA_PROVENANCE.source,
       data_notice: DATA_PROVENANCE.notice,
       docs: '/docs',
@@ -134,7 +143,6 @@ export const buildServer = async () => {
         cutoffs: '/api/v1/cutoffs',
         colleges: '/api/v1/colleges',
         rankings: '/api/v1/rankings/nirf',
-        exams: '/api/v1/exams/:exam/stats',
         predict: '/api/v1/predict',
         search: '/api/v1/search',
         compare: '/api/v1/compare?ids=1,2,3',
@@ -165,7 +173,6 @@ export const buildServer = async () => {
   await server.register(cutoffsRoutes);
   await server.register(collegesRoutes);
   await server.register(rankingsRoutes);
-  await server.register(examsRoutes);
   await server.register(predictRoutes);
   await server.register(searchRoutes);
   await server.register(compareRoutes);

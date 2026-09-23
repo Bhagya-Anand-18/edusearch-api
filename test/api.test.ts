@@ -123,7 +123,7 @@ test('not-found responses use the error envelope', async () => {
 
 test('stats reports provenance per dataset', async () => {
   const stats = await get('/api/v1/stats');
-  assert.equal(stats.body.data.data_source, 'mixed');
+  assert.equal(stats.body.data.data_source, 'official');
   assert.ok(stats.body.data.data_notice.length > 0);
 
   const find = (dataset: string, exam: string | null = null) =>
@@ -133,10 +133,10 @@ test('stats reports provenance per dataset', async () => {
   assert.deepEqual(find('cutoffs', 'neet').map((s: any) => s.source), ['mcc_derived']);
   assert.deepEqual(find('nirf_rankings').map((s: any) => s.official), [true]);
   assert.deepEqual(find('placements').map((s: any) => s.source), ['nirf']);
-  assert.deepEqual(find('exam_stats').map((s: any) => s.official), [false]);
+  assert.ok(stats.body.data.sources.every((s: any) => s.official), 'every dataset should be official');
 
   const index = await get('/');
-  assert.equal(index.body.data_source, 'mixed');
+  assert.equal(index.body.data_source, 'official');
 });
 
 test('every cutoff record carries its source', async () => {

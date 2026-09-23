@@ -18,7 +18,7 @@ const bool = (description: string) => ({ type: 'boolean', description });
 const strNull = (description: string) => ({ type: 'string', nullable: true, description });
 
 const source = (official: string) =>
-  ({ type: 'string', description: `Where this record comes from: "${official}" for official data, or "synthetic" for generated sample data.` });
+  ({ type: 'string', description: `Where this record comes from: "${official}", an official source.` });
 
 const entity = (properties: Props) => ({
   type: 'object',
@@ -109,19 +109,6 @@ export const placementSchema = entity({
   highest_salary: numNull('Not reported by NIRF; always null.'),
   top_recruiters: strNull('Not reported by NIRF; always null.'),
   source: str('Where this record comes from: "nirf", the institute\'s official NIRF data report.'),
-});
-
-export const examStatSchema = entity({
-  id: int('Unique exam statistic record ID.'),
-  exam: strNull('Exam identifier: jee_main, jee_advanced or neet.'),
-  year: intNull('Exam year.'),
-  total_registered: intNull('Candidates who registered.'),
-  total_appeared: intNull('Candidates who sat the exam.'),
-  total_qualified: intNull('Candidates who qualified.'),
-  max_score: numNull('Highest score recorded.'),
-  min_qualifying_score: numNull('Minimum qualifying score.'),
-  avg_score: numNull('Average score across candidates.'),
-  source: str('Where this record comes from. Currently always "synthetic" (generated sample data): no official exam statistics are imported yet.'),
 });
 
 export const predictionSchema = entity({

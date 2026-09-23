@@ -47,7 +47,7 @@ const routeSchema = {
           data_source: {
             type: 'string',
             enum: ['synthetic', 'official', 'mixed'],
-            description: 'Overall provenance: "mixed" means some datasets are official and some synthetic. See `sources` for the breakdown.',
+            description: 'Overall provenance: "official" when every dataset comes from an official source. See `sources` for the breakdown.',
           },
           sources: {
             type: 'array',
@@ -55,9 +55,9 @@ const routeSchema = {
             items: {
               type: 'object',
               properties: {
-                dataset: { type: 'string', description: 'cutoffs, nirf_rankings, placements or exam_stats.' },
+                dataset: { type: 'string', description: 'cutoffs, nirf_rankings or placements.' },
                 exam: { type: 'string', nullable: true, description: 'Exam, for cutoff records.' },
-                source: { type: 'string', description: 'josaa, nirf or synthetic.' },
+                source: { type: 'string', description: 'josaa, mcc_derived or nirf.' },
                 official: { type: 'boolean', description: 'True when the records come from an official source.' },
                 records: { type: 'integer', description: 'Number of records.' },
                 year_from: { type: 'integer', nullable: true, description: 'Earliest year covered.' },
@@ -92,7 +92,6 @@ export default async function(fastify: FastifyInstance) {
       SELECT 'cutoffs' as dataset, exam, source, COUNT(*) as records, MIN(year) as year_from, MAX(year) as year_to FROM cutoffs GROUP BY exam, source
       UNION ALL SELECT 'nirf_rankings', NULL, source, COUNT(*), MIN(year), MAX(year) FROM nirf_rankings GROUP BY source
       UNION ALL SELECT 'placements', NULL, source, COUNT(*), MIN(year), MAX(year) FROM placements GROUP BY source
-      UNION ALL SELECT 'exam_stats', NULL, source, COUNT(*), MIN(year), MAX(year) FROM exam_stats GROUP BY source
     `).all().map((row: any) => ({ ...row, official: row.source !== 'synthetic' }));
 
     const endTime = process.hrtime.bigint();

@@ -130,9 +130,10 @@ test('stats reports provenance per dataset', async () => {
     stats.body.data.sources.filter((s: any) => s.dataset === dataset && s.exam === exam);
   assert.deepEqual(find('cutoffs', 'jee_advanced').map((s: any) => s.source), ['josaa']);
   assert.deepEqual(find('cutoffs', 'jee_main').map((s: any) => s.source), ['josaa']);
-  assert.deepEqual(find('cutoffs', 'neet').map((s: any) => s.source), ['synthetic']);
+  assert.deepEqual(find('cutoffs', 'neet').map((s: any) => s.source), ['mcc_derived']);
   assert.deepEqual(find('nirf_rankings').map((s: any) => s.official), [true]);
-  assert.deepEqual(find('placements').map((s: any) => s.official), [false]);
+  assert.deepEqual(find('placements').map((s: any) => s.source), ['nirf']);
+  assert.deepEqual(find('exam_stats').map((s: any) => s.official), [false]);
 
   const index = await get('/');
   assert.equal(index.body.data_source, 'mixed');
@@ -142,9 +143,9 @@ test('every cutoff record carries its source', async () => {
   const jee = await get('/api/v1/cutoffs?exam=jee_main&limit=200');
   assert.ok(jee.body.data.every((r: any) => r.source === 'josaa'));
   const neet = await get('/api/v1/cutoffs?exam=neet&limit=200');
-  assert.ok(neet.body.data.every((r: any) => r.source === 'synthetic'));
+  assert.ok(neet.body.data.every((r: any) => r.source === 'mcc_derived'));
   const neetPredictions = await get('/api/v1/predict?exam=neet&rank=3000&category=general');
-  assert.ok(neetPredictions.body.data.predictions.every((p: any) => p.source === 'synthetic'));
+  assert.ok(neetPredictions.body.data.predictions.every((p: any) => p.source === 'mcc_derived'));
 });
 
 // Values checked by hand against the official pages, so a broken importer or
@@ -157,6 +158,38 @@ test('JoSAA cutoffs match the official archive', async () => {
   assert.equal(body.data[0].opening_rank, 10922);
   assert.equal(body.data[0].closing_rank, 16156);
   assert.equal(body.data[0].is_final_round, true);
+});
+
+test('NEET ranges match the MCC round-1 allotment list', async () => {
+  // MCC 2025 round 1: AIIMS New Delhi MBBS open seats, general category, ranks 1 to 48.
+  const { body } = await get(
+    '/api/v1/cutoffs?exam=neet&institute=All India Institute of Medical Sciences New Delhi&year=2025&quota=SO&category=general&pwd=false'
+  );
+  assert.equal(body.meta.total, 1);
+  assert.equal(body.data[0].opening_rank, 1);
+  assert.equal(body.data[0].closing_rank, 48);
+  assert.equal(body.data[0].program_name, 'Medicine and Surgery');
+});
+
+test('NEET women-only seats are offered only to female candidates', async () => {
+  // 2025 women-only general seats close at AIR 1,128, 7,449 and 12,719.
+  const male = await get('/api/v1/predict?exam=neet&rank=5000&category=general&gender=male');
+  assert.ok(male.body.data.predictions.every((p: any) => p.seat_pool === 'gender_neutral'));
+  const female = await get('/api/v1/predict?exam=neet&rank=5000&category=general&gender=female');
+  assert.ok(female.body.data.predictions.some((p: any) => p.seat_pool === 'female_only'));
+});
+
+test('placements match the NIRF institute data report', async () => {
+  const search = await get('/api/v1/search?q=IIT Madras');
+  const id = search.body.data.institutes.find((i: any) => i.short_name === 'IIT Madras').id;
+  const { body } = await get(`/api/v1/colleges/${id}/placements?year=2024`);
+  const ug = body.data.find((r: any) => r.program_or_dept === 'UG 4-year programs');
+  assert.equal(ug.academic_year, '2023-24');
+  assert.equal(ug.graduating, 714);
+  assert.equal(ug.placed, 549);
+  assert.equal(ug.median_salary, 1750000);
+  assert.equal(ug.source, 'nirf');
+  assert.equal(ug.highest_salary, null);
 });
 
 test('NIRF rankings match nirfindia.org and stop at the last published year', async () => {

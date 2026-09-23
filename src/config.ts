@@ -14,13 +14,13 @@ export const config = {
 };
 
 /**
- * Where the served data comes from. JEE cutoffs and NIRF rankings are official
- * (committed snapshots under data/official); NEET cutoffs, placements and exam
- * statistics are still synthetic. Every record carries its own `source`, and
+ * Where the served data comes from. Cutoffs, rankings and placements come from
+ * official sources (committed snapshots under data/official); exam statistics
+ * are still synthetic. Every record carries its own `source`, and
  * /api/v1/stats reports the per-dataset breakdown.
  */
 export const DATA_PROVENANCE = {
   source: 'mixed' as const,
   notice:
-    'JEE Advanced and JEE Main cutoffs (JoSAA, 2022-2025) and NIRF rankings (2023-2025) are official. NEET cutoffs, placement figures and exam statistics are synthetic sample data, marked source: "synthetic" on every record; do not use those for admission decisions.',
+    'JEE cutoffs (JoSAA, 2022-2025), NIRF rankings (2023-2025) and placement figures (NIRF institute data reports) are official. NEET rank ranges (2022-2025) are derived from official MCC round-1 allotments. Exam statistics are synthetic sample data, marked source: "synthetic".',
 };

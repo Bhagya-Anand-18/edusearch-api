@@ -12,9 +12,9 @@ const cutoffsQuerySchema = z.object({
   institute: z.string().optional(),
   program: z.string().optional(),
   round: z.coerce.number().int().optional(),
-  quota: z.enum(['AI', 'HS', 'OS', 'GO', 'JK', 'LA']).optional(),
+  quota: z.enum(['AI', 'HS', 'OS', 'GO', 'JK', 'LA', 'SO']).optional(),
   pwd: z.boolean().optional(), // Fastify has already coerced "true"/"false" per the route schema
-  source: z.enum(['josaa', 'synthetic']).optional(),
+  source: z.enum(['josaa', 'mcc_derived']).optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50),
   offset: z.coerce.number().int().min(0).default(0),
 });
@@ -23,7 +23,7 @@ const routeSchema = {
   tags: ['Cutoffs'],
   summary: 'List JEE/NEET closing ranks',
   description:
-    'Returns historical opening and closing ranks, joined with the program and institute they belong to. JEE Advanced and JEE Main cutoffs are official JoSAA figures for 2022-2025 (round 1 and the final round of each year); NEET cutoffs are synthetic sample data. Every record says which in its `source` field. Combine filters freely — for example `?exam=jee_advanced&year=2025&category=general&institute=IIT Bombay&quota=AI`. Results are ordered by closing rank ascending, so the most competitive seats come first.',
+    'Returns historical opening and closing ranks, joined with the program and institute they belong to. JEE Advanced and JEE Main cutoffs are official JoSAA figures for 2022-2025 (round 1 and the final round of each year). NEET ranges for 2022-2025 (round 1, all-India and AIIMS/JIPMER open-seat quotas, MBBS and BDS) are derived from official MCC allotment results. Every record says which in its `source` field. Combine filters freely — for example `?exam=jee_advanced&year=2025&category=general&institute=IIT Bombay&quota=AI`. Results are ordered by closing rank ascending, so the most competitive seats come first.',
   querystring: {
     type: 'object',
     properties: {
@@ -43,14 +43,14 @@ const routeSchema = {
       round: { type: 'integer', description: 'Counselling round number.' },
       quota: {
         type: 'string',
-        enum: ['AI', 'HS', 'OS', 'GO', 'JK', 'LA'],
-        description: 'JoSAA quota: AI (all India), HS (home state), OS (other state), GO/JK/LA (Goa, Jammu and Kashmir, Ladakh).',
+        enum: ['AI', 'HS', 'OS', 'GO', 'JK', 'LA', 'SO'],
+        description: 'Quota: AI (all India), HS (home state), OS (other state), GO/JK/LA (Goa, Jammu and Kashmir, Ladakh), or SO (AIIMS/JIPMER open seats, NEET only).',
       },
       pwd: { type: 'boolean', description: 'true for only PwD-reserved seats, false to exclude them.' },
       source: {
         type: 'string',
-        enum: ['josaa', 'synthetic'],
-        description: 'Restrict to official JoSAA records or to synthetic sample records.',
+        enum: ['josaa', 'mcc_derived'],
+        description: 'Restrict to JoSAA records (JEE) or MCC-derived records (NEET).',
       },
       ...paginationProps,
     },

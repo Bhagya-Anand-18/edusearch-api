@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "EduSearch API",
-    "description": "Indian education data API — JEE/NEET cutoffs, NIRF rankings, college data, placements, and admission predictions.\n\n**JEE Advanced and JEE Main cutoffs (JoSAA, 2022-2025) and NIRF rankings (2023-2025) are official. NEET cutoffs, placement figures and exam statistics are synthetic sample data, marked source: \"synthetic\" on every record; do not use those for admission decisions.**",
+    "description": "Indian education data API — JEE/NEET cutoffs, NIRF rankings, college data, placements, and admission predictions.\n\n**JEE cutoffs (JoSAA, 2022-2025), NIRF rankings (2023-2025) and placement figures (NIRF institute data reports) are official. NEET rank ranges (2022-2025) are derived from official MCC round-1 allotments. Exam statistics are synthetic sample data, marked source: \"synthetic\".**",
     "version": "1.0.0",
     "contact": {
       "name": "EduSearch API"
@@ -100,7 +100,7 @@
         "tags": [
           "Cutoffs"
         ],
-        "description": "Returns historical opening and closing ranks, joined with the program and institute they belong to. JEE Advanced and JEE Main cutoffs are official JoSAA figures for 2022-2025 (round 1 and the final round of each year); NEET cutoffs are synthetic sample data. Every record says which in its `source` field. Combine filters freely — for example `?exam=jee_advanced&year=2025&category=general&institute=IIT Bombay&quota=AI`. Results are ordered by closing rank ascending, so the most competitive seats come first.",
+        "description": "Returns historical opening and closing ranks, joined with the program and institute they belong to. JEE Advanced and JEE Main cutoffs are official JoSAA figures for 2022-2025 (round 1 and the final round of each year). NEET ranges for 2022-2025 (round 1, all-India and AIIMS/JIPMER open-seat quotas, MBBS and BDS) are derived from official MCC allotment results. Every record says which in its `source` field. Combine filters freely — for example `?exam=jee_advanced&year=2025&category=general&institute=IIT Bombay&quota=AI`. Results are ordered by closing rank ascending, so the most competitive seats come first.",
         "parameters": [
           {
             "schema": {
@@ -179,13 +179,14 @@
                 "OS",
                 "GO",
                 "JK",
-                "LA"
+                "LA",
+                "SO"
               ]
             },
             "in": "query",
             "name": "quota",
             "required": false,
-            "description": "JoSAA quota: AI (all India), HS (home state), OS (other state), GO/JK/LA (Goa, Jammu and Kashmir, Ladakh)."
+            "description": "Quota: AI (all India), HS (home state), OS (other state), GO/JK/LA (Goa, Jammu and Kashmir, Ladakh), or SO (AIIMS/JIPMER open seats, NEET only)."
           },
           {
             "schema": {
@@ -201,13 +202,13 @@
               "type": "string",
               "enum": [
                 "josaa",
-                "synthetic"
+                "mcc_derived"
               ]
             },
             "in": "query",
             "name": "source",
             "required": false,
-            "description": "Restrict to official JoSAA records or to synthetic sample records."
+            "description": "Restrict to JoSAA records (JEE) or MCC-derived records (NEET)."
           },
           {
             "schema": {
@@ -282,7 +283,7 @@
                           "quota": {
                             "type": "string",
                             "nullable": true,
-                            "description": "JoSAA quota: AI (all India), HS (home state), OS (other state), or GO/JK/LA (Goa, Jammu and Kashmir, Ladakh)."
+                            "description": "Quota. JEE (JoSAA): AI (all India), HS (home state), OS (other state), or GO/JK/LA (Goa, Jammu and Kashmir, Ladakh). NEET (MCC): AI (all-India quota) or SO (AIIMS/JIPMER open seats)."
                           },
                           "category": {
                             "type": "string",
@@ -301,16 +302,16 @@
                           "opening_rank": {
                             "type": "integer",
                             "nullable": true,
-                            "description": "Best rank admitted in this round. Category rank for non-general categories; for PwD seats (pwd: true), the rank on the separate PwD rank list."
+                            "description": "Best rank admitted in this round. JEE: category rank for non-general categories, and the PwD rank list for PwD seats. NEET: all-India rank (AIR) in every category."
                           },
                           "closing_rank": {
                             "type": "integer",
                             "nullable": true,
-                            "description": "Last rank admitted in this round — the number most consumers filter on. Category rank for non-general categories; for PwD seats (pwd: true), the rank on the separate PwD rank list."
+                            "description": "Last rank admitted in this round — the number most consumers filter on. Same rank basis as opening_rank."
                           },
                           "source": {
                             "type": "string",
-                            "description": "Where this record comes from: \"josaa\" for official data, or \"synthetic\" for generated sample data."
+                            "description": "Where this record comes from. \"josaa\": official JoSAA opening and closing ranks. \"mcc_derived\": computed from official MCC round-1 allotment results as the best and worst rank allotted to the seat group, since MCC publishes allotments rather than cutoffs."
                           },
                           "program_name": {
                             "type": "string",
@@ -960,41 +961,61 @@
                               "year": {
                                 "type": "integer",
                                 "nullable": true,
-                                "description": "Placement season year."
+                                "description": "Year the batch graduated: academic year 2023-24 is 2024."
+                              },
+                              "academic_year": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Graduating academic year as NIRF reports it, e.g. \"2023-24\"."
                               },
                               "program_or_dept": {
                                 "type": "string",
                                 "nullable": true,
-                                "description": "Program or department the figures cover."
+                                "description": "Program block the figures cover, e.g. \"UG 4-year programs\" or \"PG 2-year programs\"."
+                              },
+                              "graduating": {
+                                "type": "integer",
+                                "nullable": true,
+                                "description": "Students graduating in the minimum stipulated time."
+                              },
+                              "placed": {
+                                "type": "integer",
+                                "nullable": true,
+                                "description": "Students placed."
+                              },
+                              "higher_studies": {
+                                "type": "integer",
+                                "nullable": true,
+                                "description": "Students selected for higher studies."
                               },
                               "students_placed_pct": {
                                 "type": "number",
                                 "nullable": true,
-                                "description": "Share of eligible students placed, as a percentage."
+                                "description": "placed as a percentage of graduating."
                               },
                               "median_salary": {
                                 "type": "number",
                                 "nullable": true,
-                                "description": "Median annual package in INR."
+                                "description": "Median annual salary of placed graduates in INR; null when nobody in the batch was placed."
                               },
                               "average_salary": {
                                 "type": "number",
                                 "nullable": true,
-                                "description": "Average annual package in INR."
+                                "description": "Not reported by NIRF; always null."
                               },
                               "highest_salary": {
                                 "type": "number",
                                 "nullable": true,
-                                "description": "Highest annual package in INR."
+                                "description": "Not reported by NIRF; always null."
                               },
                               "top_recruiters": {
                                 "type": "string",
                                 "nullable": true,
-                                "description": "JSON-encoded array of recruiter names."
+                                "description": "Not reported by NIRF; always null."
                               },
                               "source": {
                                 "type": "string",
-                                "description": "Where this record comes from. Currently always \"synthetic\" (generated sample data): no official placement source is imported yet."
+                                "description": "Where this record comes from: \"nirf\", the institute's official NIRF data report."
                               }
                             }
                           },
@@ -1118,7 +1139,7 @@
         "tags": [
           "Colleges"
         ],
-        "description": "Returns placement figures — placement percentage and median, average and highest packages — for one institute, newest year first. Add `?year=` to pin a single season.\n\nPlacement figures are synthetic sample data (each record says `source: \"synthetic\"`) and cover 48 institutes; the rest return an empty array, which means no data rather than no placements.",
+        "description": "Returns official placement figures from the institute's NIRF data report — graduates, students placed, placement percentage, median salary and students going on to higher studies — for its three most recent graduating batches in each program block (UG 4-year, PG 2-year, ...), newest first. Add `?year=` for batches graduating in one year. NIRF reports no average or highest salary. Coverage is NIRF-ranked institutes; others return an empty array, which means no data rather than no placements.",
         "parameters": [
           {
             "schema": {
@@ -1127,7 +1148,7 @@
             "in": "query",
             "name": "year",
             "required": false,
-            "description": "Restrict to a single placement year, e.g. 2025."
+            "description": "Restrict to batches graduating in this year, e.g. 2024 for academic year 2023-24."
           },
           {
             "schema": {
@@ -1169,41 +1190,61 @@
                           "year": {
                             "type": "integer",
                             "nullable": true,
-                            "description": "Placement season year."
+                            "description": "Year the batch graduated: academic year 2023-24 is 2024."
+                          },
+                          "academic_year": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Graduating academic year as NIRF reports it, e.g. \"2023-24\"."
                           },
                           "program_or_dept": {
                             "type": "string",
                             "nullable": true,
-                            "description": "Program or department the figures cover."
+                            "description": "Program block the figures cover, e.g. \"UG 4-year programs\" or \"PG 2-year programs\"."
+                          },
+                          "graduating": {
+                            "type": "integer",
+                            "nullable": true,
+                            "description": "Students graduating in the minimum stipulated time."
+                          },
+                          "placed": {
+                            "type": "integer",
+                            "nullable": true,
+                            "description": "Students placed."
+                          },
+                          "higher_studies": {
+                            "type": "integer",
+                            "nullable": true,
+                            "description": "Students selected for higher studies."
                           },
                           "students_placed_pct": {
                             "type": "number",
                             "nullable": true,
-                            "description": "Share of eligible students placed, as a percentage."
+                            "description": "placed as a percentage of graduating."
                           },
                           "median_salary": {
                             "type": "number",
                             "nullable": true,
-                            "description": "Median annual package in INR."
+                            "description": "Median annual salary of placed graduates in INR; null when nobody in the batch was placed."
                           },
                           "average_salary": {
                             "type": "number",
                             "nullable": true,
-                            "description": "Average annual package in INR."
+                            "description": "Not reported by NIRF; always null."
                           },
                           "highest_salary": {
                             "type": "number",
                             "nullable": true,
-                            "description": "Highest annual package in INR."
+                            "description": "Not reported by NIRF; always null."
                           },
                           "top_recruiters": {
                             "type": "string",
                             "nullable": true,
-                            "description": "JSON-encoded array of recruiter names."
+                            "description": "Not reported by NIRF; always null."
                           },
                           "source": {
                             "type": "string",
-                            "description": "Where this record comes from. Currently always \"synthetic\" (generated sample data): no official placement source is imported yet."
+                            "description": "Where this record comes from: \"nirf\", the institute's official NIRF data report."
                           }
                         }
                       },
@@ -1379,7 +1420,7 @@
                           "quota": {
                             "type": "string",
                             "nullable": true,
-                            "description": "JoSAA quota: AI (all India), HS (home state), OS (other state), or GO/JK/LA (Goa, Jammu and Kashmir, Ladakh)."
+                            "description": "Quota. JEE (JoSAA): AI (all India), HS (home state), OS (other state), or GO/JK/LA (Goa, Jammu and Kashmir, Ladakh). NEET (MCC): AI (all-India quota) or SO (AIIMS/JIPMER open seats)."
                           },
                           "category": {
                             "type": "string",
@@ -1398,16 +1439,16 @@
                           "opening_rank": {
                             "type": "integer",
                             "nullable": true,
-                            "description": "Best rank admitted in this round. Category rank for non-general categories; for PwD seats (pwd: true), the rank on the separate PwD rank list."
+                            "description": "Best rank admitted in this round. JEE: category rank for non-general categories, and the PwD rank list for PwD seats. NEET: all-India rank (AIR) in every category."
                           },
                           "closing_rank": {
                             "type": "integer",
                             "nullable": true,
-                            "description": "Last rank admitted in this round — the number most consumers filter on. Category rank for non-general categories; for PwD seats (pwd: true), the rank on the separate PwD rank list."
+                            "description": "Last rank admitted in this round — the number most consumers filter on. Same rank basis as opening_rank."
                           },
                           "source": {
                             "type": "string",
-                            "description": "Where this record comes from: \"josaa\" for official data, or \"synthetic\" for generated sample data."
+                            "description": "Where this record comes from. \"josaa\": official JoSAA opening and closing ranks. \"mcc_derived\": computed from official MCC round-1 allotment results as the best and worst rank allotted to the seat group, since MCC publishes allotments rather than cutoffs."
                           },
                           "program_name": {
                             "type": "string",
@@ -1954,7 +1995,7 @@
         "tags": [
           "Predict"
         ],
-        "description": "The flagship endpoint. Give it an exam, a rank and a category, and it returns every program the candidate has a realistic shot at, each with a confidence percentage derived from the most recent year of opening and closing ranks, plus a year-over-year trend. Each program appears once, scored on the round, quota and seat pool that give the candidate the best chance. Results are sorted by confidence, then by NIRF rank.\n\nJEE predictions use official JoSAA cutoffs. NEET predictions use synthetic sample cutoffs and say so in each result's `source` field.\n\nPass `home_state` to include home-state (HS) quota seats at institutes in that state; without it, predictions use all-India (AI) and other-state (OS) seats only. Home-state eligibility is matched on the institute's own state; a few institutes extend their HS quota to neighbouring states or union territories, which this does not model.",
+        "description": "The flagship endpoint. Give it an exam, a rank and a category, and it returns every program the candidate has a realistic shot at, each with a confidence percentage derived from the most recent year of opening and closing ranks, plus a year-over-year trend. Each program appears once, scored on the round, quota and seat pool that give the candidate the best chance. Results are sorted by confidence, then by NIRF rank.\n\nJEE predictions use official JoSAA cutoffs. NEET predictions use rank ranges derived from official MCC round-1 allotments (all-India quota and AIIMS/JIPMER open seats); each result's `source` field says which.\n\nPass `home_state` to include home-state (HS) quota seats at institutes in that state; without it, predictions use all-India (AI) and other-state (OS) seats only. Home-state eligibility is matched on the institute's own state; a few institutes extend their HS quota to neighbouring states or union territories, which this does not model.",
         "parameters": [
           {
             "schema": {
@@ -1978,7 +2019,7 @@
             "in": "query",
             "name": "rank",
             "required": true,
-            "description": "The candidate's rank, e.g. 500. Use the common rank list (CRL) rank for general, and the category rank for ews, obc, sc and st — that is how JoSAA publishes category cutoffs."
+            "description": "The candidate's rank, e.g. 500. JEE: the common rank list (CRL) rank for general, and the category rank for ews, obc, sc and st, as JoSAA publishes cutoffs. NEET: the all-India rank (AIR) in every category, as MCC allots seats."
           },
           {
             "schema": {
@@ -2807,41 +2848,61 @@
                                   "year": {
                                     "type": "integer",
                                     "nullable": true,
-                                    "description": "Placement season year."
+                                    "description": "Year the batch graduated: academic year 2023-24 is 2024."
+                                  },
+                                  "academic_year": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "Graduating academic year as NIRF reports it, e.g. \"2023-24\"."
                                   },
                                   "program_or_dept": {
                                     "type": "string",
                                     "nullable": true,
-                                    "description": "Program or department the figures cover."
+                                    "description": "Program block the figures cover, e.g. \"UG 4-year programs\" or \"PG 2-year programs\"."
+                                  },
+                                  "graduating": {
+                                    "type": "integer",
+                                    "nullable": true,
+                                    "description": "Students graduating in the minimum stipulated time."
+                                  },
+                                  "placed": {
+                                    "type": "integer",
+                                    "nullable": true,
+                                    "description": "Students placed."
+                                  },
+                                  "higher_studies": {
+                                    "type": "integer",
+                                    "nullable": true,
+                                    "description": "Students selected for higher studies."
                                   },
                                   "students_placed_pct": {
                                     "type": "number",
                                     "nullable": true,
-                                    "description": "Share of eligible students placed, as a percentage."
+                                    "description": "placed as a percentage of graduating."
                                   },
                                   "median_salary": {
                                     "type": "number",
                                     "nullable": true,
-                                    "description": "Median annual package in INR."
+                                    "description": "Median annual salary of placed graduates in INR; null when nobody in the batch was placed."
                                   },
                                   "average_salary": {
                                     "type": "number",
                                     "nullable": true,
-                                    "description": "Average annual package in INR."
+                                    "description": "Not reported by NIRF; always null."
                                   },
                                   "highest_salary": {
                                     "type": "number",
                                     "nullable": true,
-                                    "description": "Highest annual package in INR."
+                                    "description": "Not reported by NIRF; always null."
                                   },
                                   "top_recruiters": {
                                     "type": "string",
                                     "nullable": true,
-                                    "description": "JSON-encoded array of recruiter names."
+                                    "description": "Not reported by NIRF; always null."
                                   },
                                   "source": {
                                     "type": "string",
-                                    "description": "Where this record comes from. Currently always \"synthetic\" (generated sample data): no official placement source is imported yet."
+                                    "description": "Where this record comes from: \"nirf\", the institute's official NIRF data report."
                                   }
                                 },
                                 "nullable": true,

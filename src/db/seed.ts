@@ -2,22 +2,26 @@
  * Builds the database from committed snapshots of official data, topped up
  * with clearly labelled synthetic data where no official source is imported yet.
  *
- *   Official (source = 'josaa' / 'nirf'):
- *     - Institutes, programs and JEE cutoffs from data/official/josaa (JoSAA archive)
- *     - NIRF rankings from data/official/nirf (nirfindia.org)
+ *   Official:
+ *     - Engineering institutes, programs and JEE cutoffs from data/official/josaa
+ *       (JoSAA archive; source = 'josaa')
+ *     - Medical colleges and NEET rank ranges from data/official/mcc, derived from
+ *       MCC round-1 allotment results (source = 'mcc_derived')
+ *     - NIRF rankings and placement figures from data/official/nirf
+ *       (nirfindia.org rankings and institute data reports; source = 'nirf')
  *   Synthetic (source = 'synthetic'):
- *     - NEET cutoffs (MCC counselling is not imported yet)
- *     - Placements and exam statistics
+ *     - Exam statistics, the one dataset with no official import yet
  *
  * This never touches the network, so it is safe to run on every build. Refresh
- * the snapshots with `npm run fetch:josaa` and `npm run fetch:nirf`.
+ * the snapshots with the fetch:* scripts.
  */
 import fs from 'fs';
 import path from 'path';
 import zlib from 'zlib';
 import { db } from './database.js';
 import { schema } from './schema.js';
-import { KNOWN_INSTITUTES, STATE_OVERRIDES } from './institutes.js';
+import { KNOWN_INSTITUTES, KNOWN_MEDICAL_MCC, STATE_OVERRIDES } from './institutes.js';
+import { medicalNameKey, parseMccInstitute, resolveMccIdentities, tidyName } from './mcc-institutes.js';
 import { canonicalState } from '../utils/states.js';
 import { logger } from '../utils/logger.js';
 
@@ -36,6 +40,19 @@ interface JosaaSnapshot {
 }
 
 type NirfRow = [string, string, string, string, number, number, number, number, number, number, number];
+
+type MccRow = [string, 'MBBS' | 'BDS', string, string, boolean, string, number, number, number];
+interface MccSnapshot {
+  year: number;
+  round: number;
+  rows: MccRow[];
+}
+
+interface PlacementSnapshot {
+  institutes: Record<string, {
+    rows: { program: string; academic_year: string; graduating: number | null; placed: number | null; median_salary: number | null; higher_studies: number | null }[];
+  }>;
+}
 interface NirfSnapshot {
   year: number;
   category: 'engineering' | 'medical';
@@ -108,6 +125,11 @@ const NIRF_ALIASES: [string, string, string][] = [
   ['King George`s Medical University', 'Lucknow', 'King George Medical University'],
   ['Madras Medical College and Government General Hospital', 'Chennai', 'Madras Medical College'],
   ['Madras Medical College and Government General Hospital, Chennai', 'Chennai', 'Madras Medical College'],
+  ['Pandit Dwarka Prasad Mishra Indian Institute of Information Technology, Design and Manufacturing (IIITDM)', 'Jabalpur',
+    'Pt. Dwarka Prasad Mishra Indian Institute of Information Technology, Design & Manufacture Jabalpur'],
+  // BIT Mesra is in Ranchi; NIRF drops "Mesra". The ICT listed under Mumbai is
+  // the main campus, not JoSAA's Odisha campus, so it is deliberately not aliased.
+  ['Birla Institute of Technology', 'Ranchi', 'Birla Institute of Technology, Mesra, Ranchi'],
 ];
 const nirfAliasIndex = new Map(NIRF_ALIASES.map(([name, city, ours]) => [`${normalize(name)}|${normalize(city)}`, ours]));
 
@@ -176,23 +198,6 @@ const deriveShortName = (name: string, type: string): string | null => {
 };
 
 // ---------------------------------------------------------------------------
-// Deterministic randomness for the synthetic datasets
-// ---------------------------------------------------------------------------
-
-/**
- * render.yaml re-runs this script on every build. A fixed-seed PRNG (mulberry32)
- * keeps the synthetic numbers identical across deploys.
- */
-const mulberry32 = (a: number) => () => {
-  a |= 0; a = (a + 0x6D2B79F5) | 0;
-  let t = Math.imul(a ^ (a >>> 15), 1 | a);
-  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-};
-const random = mulberry32(20250601);
-const randRange = (min: number, max: number) => Math.floor(random() * (max - min + 1)) + min;
-
-// ---------------------------------------------------------------------------
 // Seed
 // ---------------------------------------------------------------------------
 
@@ -205,14 +210,20 @@ interface Institute {
   website: string | null;
   established_year: number | null;
   nirf: { year: number; category: string; rank: number; score: number } | null;
-  /** Synthetic placements stay limited to the institutes that always had them. */
-  synthetic_placements: boolean;
+  /** NIRF IDs matched to this institute, for looking up its placement report. */
+  nirf_ids: Set<string>;
 }
+
+/** NIRF writes "All India Institute of Medical Sciences"; MCC writes "AIIMS". */
+const nirfMedicalKey = (name: string) =>
+  medicalNameKey(name.replace(/All India Institute of Medical Sciences/i, 'AIIMS'));
 
 const seed = () => {
   const josaa = listSnapshots('josaa', /^\d{4}-r\d+\.json(\.gz)?$/).map(readJson) as JosaaSnapshot[];
   const josaaTypes: Record<string, string> = readJson(path.join(OFFICIAL_DIR, 'josaa/institutes.json')).types;
   const nirf = listSnapshots('nirf', /^\d{4}-(engineering|medical)\.json$/).map(readJson) as NirfSnapshot[];
+  const mcc = listSnapshots('mcc', /^\d{4}-r\d+\.json(\.gz)?$/).map(readJson) as MccSnapshot[];
+  const placements = readJson(path.join(OFFICIAL_DIR, 'nirf/placements.json')) as PlacementSnapshot;
 
   // Every table is derived from the snapshots, so rebuild from scratch rather
   // than migrating whatever schema an existing database file has.
@@ -234,7 +245,7 @@ const seed = () => {
 
     for (const [name, short_name, type, state, city, website, established_year] of KNOWN_INSTITUTES) {
       institutes.set(canonicalKey(name), {
-        name, short_name, type, state, city, website, established_year, nirf: null, synthetic_placements: true,
+        name, short_name, type, state, city, website, established_year, nirf: null, nirf_ids: new Set(),
       });
     }
 
@@ -248,19 +259,100 @@ const seed = () => {
       const type = JOSAA_TYPES[josaaType];
       institutes.set(key, {
         name: josaaName, short_name: deriveShortName(josaaName, type), type,
-        state: STATE_OVERRIDES[josaaName] ?? null, city: null, website: null, established_year: null, nirf: null, synthetic_placements: false,
+        state: STATE_OVERRIDES[josaaName] ?? null, city: null, website: null, established_year: null, nirf: null, nirf_ids: new Set(),
       });
     }
     report.push(`JoSAA: ${josaaNames.size} institute names (${enriched} matched to existing metadata)`);
 
+    // Medical colleges from MCC. Identity is resolved across years (see
+    // mcc-institutes.ts); the display name comes from the latest year.
+    const mccEntries = mcc.flatMap((snap) => [...new Set(snap.rows.map((r) => r[0]))].map((raw) => ({ raw, year: snap.year })));
+    const resolution = resolveMccIdentities(mccEntries);
+    const latestRaw = new Map<string, { raw: string; year: number }>();
+    for (const e of mccEntries) {
+      const id = resolution.keys.get(e.raw)!;
+      const current = latestRaw.get(id);
+      if (!current || e.year > current.year) latestRaw.set(id, e);
+    }
+    const nameUses = new Map<string, number>();
+    for (const { raw } of latestRaw.values()) {
+      const k = parseMccInstitute(raw).nameKey;
+      nameUses.set(k, (nameUses.get(k) ?? 0) + 1);
+    }
+    const knownByMcc = new Map<string, string>(); // MCC identity -> known institute key
+    for (const [knownName, match] of Object.entries(KNOWN_MEDICAL_MCC)) {
+      // One college can have several MCC entries (KGMU lists its dental faculty separately).
+      const ids = [...latestRaw].filter(([, { raw }]) => parseMccInstitute(raw).pin === match.pin && match.name.test(raw)).map(([id]) => id);
+      if (!ids.length) throw new Error(`KNOWN_MEDICAL_MCC: no MCC college matches "${knownName}"`);
+      for (const id of ids) knownByMcc.set(id, canonicalKey(knownName));
+    }
+    const mccInstituteKey = new Map<string, string>(); // MCC identity -> institutes map key
+    const displayNames = new Set([...institutes.values()].map((i) => i.name));
+    for (const [id, { raw }] of latestRaw) {
+      const p = parseMccInstitute(raw);
+      const known = knownByMcc.get(id);
+      if (known) {
+        institutes.get(known)!.state ??= p.state;
+        mccInstituteKey.set(id, known);
+        continue;
+      }
+      const place = p.place && p.place.split(' ').length <= 3 && !/\d/.test(p.place) ? tidyName(p.place) : null;
+      let name = tidyName(p.name);
+      if ((nameUses.get(p.nameKey) ?? 0) > 1 && place) name = `${name}, ${place}`;
+      if (displayNames.has(name) && p.pin) name = `${name} (${p.pin})`;
+      displayNames.add(name);
+      const key = `mcc|${id}`;
+      institutes.set(key, {
+        name, short_name: null, type: 'Medical', state: p.state, city: place,
+        website: null, established_year: null, nirf: null, nirf_ids: new Set(),
+      });
+      mccInstituteKey.set(id, key);
+    }
+    report.push(`MCC: ${latestRaw.size} medical college entries (${knownByMcc.size} matched to existing metadata; ${resolution.renames.length} renames merged; ${resolution.unresolved.length} unresolved)`);
+
+    // NIRF names medical colleges differently from MCC; match them by name key
+    // (with or without the city appended), confirmed by state.
+    const medicalIndex = new Map<string, string[]>();
+    const indexMedical = (k: string, instKey: string) => medicalIndex.set(k, [...new Set([...(medicalIndex.get(k) ?? []), instKey])]);
+    for (const [id, instKey] of mccInstituteKey) {
+      const p = parseMccInstitute(latestRaw.get(id)!.raw);
+      indexMedical(p.nameKey, instKey);
+      if (p.place) indexMedical(p.nameKey + medicalNameKey(p.place), instKey);
+      indexMedical(medicalNameKey(institutes.get(instKey)!.name), instKey);
+    }
+    const matchMedical = (row: NirfRow): string | null => {
+      const [, name, city, state] = row;
+      const candidates = new Set([
+        ...(medicalIndex.get(nirfMedicalKey(name)) ?? []),
+        ...(medicalIndex.get(nirfMedicalKey(`${name} ${city}`)) ?? []),
+      ]);
+      const inState = [...candidates].filter((k) => {
+        const s = institutes.get(k)!.state;
+        return !s || s === canonicalState(state);
+      });
+      return inState.length === 1 ? inState[0] : null;
+    };
+
     // NIRF supplies each institute's rankings, and its location where we lack one.
+    // NIRF IDs are stable while names change between years ("Pt. B.D.Sharma,
+    // PGIMS" became "Pandit Bhagwat Dayal Sharma University of Health Sciences"),
+    // so an ID matched by name in any year claims that institute's rows in every year.
+    const nirfIdKeys = new Map<string, string>();
+    for (const snap of nirf) {
+      for (const row of snap.rows) {
+        let key = nirfKey(row[1], row[2]);
+        if (!institutes.has(key) && snap.category === 'medical') key = matchMedical(row) ?? key;
+        if (institutes.has(key) && !nirfIdKeys.has(row[0])) nirfIdKeys.set(row[0], key);
+      }
+    }
     const nirfRows: { key: string; year: number; category: string; row: NirfRow }[] = [];
     const outsideCoverage = new Set<string>();
     for (const snap of nirf) {
       for (const row of snap.rows) {
-        const key = nirfKey(row[1], row[2]);
-        const inst = institutes.get(key);
-        if (!inst) { outsideCoverage.add(row[1]); continue; }
+        const key = nirfIdKeys.get(row[0]);
+        const inst = key ? institutes.get(key) : undefined;
+        if (!key || !inst) { outsideCoverage.add(row[1]); continue; }
+        inst.nirf_ids.add(row[0]);
         inst.city ??= row[2];
         inst.state ??= row[3];
         if (!inst.nirf || snap.year > inst.nirf.year) {
@@ -344,56 +436,69 @@ const seed = () => {
     report.push(`JoSAA: ${programIds.size} programs, ${cutoffCount} cutoff records from ${josaa.length} snapshots`);
     for (const [why, n] of Object.entries(skipped)) report.push(`JoSAA: skipped ${n} rows (${why})`);
 
-    // --- Synthetic: NEET cutoffs -------------------------------------------
-    // MCC counselling data is not imported yet; every row says so in `source`.
-    const catMult: Record<string, number> = { general: 1.0, ews: 1.3, obc: 1.5, sc: 3.5, st: 5.0 };
-    let neetCount = 0;
-    for (const [name] of KNOWN_INSTITUTES.filter((i) => i[2] === 'Medical')) {
-      const key = canonicalKey(name);
-      const programId = Number(insertProgram.run(instituteIds.get(key), 'Medicine and Surgery', 'MBBS', 5).lastInsertRowid);
-      const tier = institutes.get(key)!.nirf?.rank ?? 40;
-      const baseOpen = Math.max(1, tier * 40);
-      const baseClose = tier * 400 + 50;
-      for (const year of [2022, 2023, 2024, 2025]) {
-        for (const [category, mult] of Object.entries(catMult)) {
-          const vary = 1 + randRange(-5, 5) / 100;
-          insertCutoff.run(programId, 'neet', year, 1, 1, 'AI', category, 0, 'neutral',
-            Math.max(1, Math.floor(baseOpen * mult * vary)), Math.floor(baseClose * mult * vary), 'synthetic');
-          neetCount++;
+    // --- NEET rank ranges from MCC allotments -------------------------------
+    // A college can appear under several spellings within one year, so merge
+    // groups per identity before inserting.
+    type NeetGroup = { instKey: string; course: string; year: number; round: number; quota: string; category: string; pwd: boolean; gender: string; opening: number; closing: number };
+    const neetGroups = new Map<string, NeetGroup>();
+    for (const snap of mcc) {
+      for (const [raw, course, quota, category, pwd, gender, opening, closing] of snap.rows) {
+        const instKey = mccInstituteKey.get(resolution.keys.get(raw)!)!;
+        const k = [instKey, course, snap.year, snap.round, quota, category, pwd, gender].join('|');
+        const g = neetGroups.get(k);
+        if (g) {
+          g.opening = Math.min(g.opening, opening);
+          g.closing = Math.max(g.closing, closing);
+        } else {
+          neetGroups.set(k, { instKey, course, year: snap.year, round: snap.round, quota, category, pwd, gender, opening, closing });
         }
       }
     }
-    report.push(`Synthetic: ${neetCount} NEET cutoff records`);
-
-    // --- Synthetic: placements ---------------------------------------------
-    const insertPlacement = db.prepare(`
-      INSERT INTO placements (institute_id, year, program_or_dept, students_placed_pct, median_salary, average_salary, highest_salary, top_recruiters, source)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'synthetic')
-    `);
-    // [placed% lo, hi, median lo, hi, average lo, hi, highest lo, hi], salaries in lakh INR
-    const ranges: Record<string, number[]> = {
-      top: [85, 95, 20, 25, 25, 30, 200, 300],
-      IIT: [75, 90, 14, 18, 16, 22, 80, 150],
-      NIT: [70, 85, 8, 12, 10, 15, 50, 80],
-      IIIT: [80, 95, 15, 22, 18, 26, 80, 120],
-      Medical: [95, 99, 12, 20, 15, 25, 30, 40],
+    const COURSES: Record<string, [string, string, number]> = {
+      MBBS: ['Medicine and Surgery', 'MBBS', 5],
+      BDS: ['Dental Surgery', 'BDS', 5],
     };
-    let placementCount = 0;
-    for (const [key, inst] of institutes) {
-      if (!inst.synthetic_placements) continue;
-      const tier = ['IIT Bombay', 'IIT Delhi', 'IIT Madras'].includes(inst.short_name ?? '') ? 'top' : inst.type;
-      const [pl, ph, ml, mh, al, ah, hl, hh] = ranges[tier] ?? ranges.NIT;
-      const pool = inst.type === 'Medical'
-        ? ['Apollo Hospitals', 'Fortis Healthcare', 'Max Healthcare', 'Manipal Hospitals', 'State Health Services', 'AIIMS']
-        : ['Google', 'Microsoft', 'Amazon', 'Apple', 'Meta', 'HFTs'];
-      for (const year of [2023, 2024, 2025]) {
-        const recruiters = JSON.stringify([...pool].sort(() => 0.5 - random()).slice(0, 3));
-        insertPlacement.run(instituteIds.get(key), year, 'Overall', randRange(pl, ph),
-          randRange(ml, mh) * 100000, randRange(al, ah) * 100000, randRange(hl, hh) * 100000, recruiters);
-        placementCount++;
+    for (const g of neetGroups.values()) {
+      const instituteId = instituteIds.get(g.instKey)!;
+      const programKey = `${instituteId}|${g.course}`;
+      let programId = programIds.get(programKey);
+      if (programId === undefined) {
+        const [name, degree, duration] = COURSES[g.course];
+        programId = Number(insertProgram.run(instituteId, name, degree, duration).lastInsertRowid);
+        programIds.set(programKey, programId);
       }
+      // MCC occasionally prints a half rank (13767.5) to break a tie.
+      insertCutoff.run(programId, 'neet', g.year, g.round, 0, g.quota, g.category, g.pwd ? 1 : 0, g.gender,
+        Math.floor(g.opening), Math.floor(g.closing), 'mcc_derived');
     }
-    report.push(`Synthetic: ${placementCount} placement records`);
+    report.push(`MCC: ${neetGroups.size} NEET seat-group records from ${mcc.length} snapshots`);
+
+    // --- Placements from NIRF institute data reports ------------------------
+    const insertPlacement = db.prepare(`
+      INSERT INTO placements (institute_id, year, academic_year, program_or_dept, graduating, placed, higher_studies,
+        students_placed_pct, median_salary, average_salary, highest_salary, top_recruiters, source)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, 'nirf')
+    `);
+    let placementCount = 0;
+    let placementInstitutes = 0;
+    for (const [key, inst] of institutes) {
+      const seen = new Set<string>();
+      for (const nirfId of inst.nirf_ids) {
+        for (const r of placements.institutes[nirfId]?.rows ?? []) {
+          const k = `${r.program}|${r.academic_year}`;
+          if (seen.has(k)) continue;
+          seen.add(k);
+          const pct = r.graduating && r.placed !== null ? Math.round((r.placed / r.graduating) * 1000) / 10 : null;
+          insertPlacement.run(instituteIds.get(key), 2000 + Number(r.academic_year.slice(5)), r.academic_year, r.program,
+            r.graduating, r.placed, r.higher_studies, pct,
+            // A median of 0 means nobody in the batch was placed, not a salary of zero.
+            r.placed ? r.median_salary : null);
+          placementCount++;
+        }
+      }
+      if (seen.size) placementInstitutes++;
+    }
+    report.push(`NIRF: ${placementCount} placement records for ${placementInstitutes} institutes`);
 
     // --- Synthetic: exam statistics ----------------------------------------
     const insertExamStat = db.prepare(`

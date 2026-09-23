@@ -28,7 +28,7 @@ const routeSchema = {
   summary: 'Predict which colleges a rank can get into',
   description:
     'The flagship endpoint. Give it an exam, a rank and a category, and it returns every program the candidate has a realistic shot at, each with a confidence percentage derived from the most recent year of opening and closing ranks, plus a year-over-year trend. Each program appears once, scored on the round, quota and seat pool that give the candidate the best chance. Results are sorted by confidence, then by NIRF rank.\n\n' +
-    'JEE predictions use official JoSAA cutoffs. NEET predictions use synthetic sample cutoffs and say so in each result\'s `source` field.\n\n' +
+    'JEE predictions use official JoSAA cutoffs. NEET predictions use rank ranges derived from official MCC round-1 allotments (all-India quota and AIIMS/JIPMER open seats); each result\'s `source` field says which.\n\n' +
     'Pass `home_state` to include home-state (HS) quota seats at institutes in that state; without it, predictions use all-India (AI) and other-state (OS) seats only. Home-state eligibility is matched on the institute\'s own state; a few institutes extend their HS quota to neighbouring states or union territories, which this does not model.',
   querystring: {
     type: 'object',
@@ -42,7 +42,7 @@ const routeSchema = {
       rank: {
         type: 'integer',
         minimum: 1,
-        description: 'The candidate\'s rank, e.g. 500. Use the common rank list (CRL) rank for general, and the category rank for ews, obc, sc and st — that is how JoSAA publishes category cutoffs.',
+        description: 'The candidate\'s rank, e.g. 500. JEE: the common rank list (CRL) rank for general, and the category rank for ews, obc, sc and st, as JoSAA publishes cutoffs. NEET: the all-India rank (AIR) in every category, as MCC allots seats.',
       },
       category: {
         type: 'string',
@@ -132,11 +132,12 @@ export default async function(fastify: FastifyInstance) {
       // PwD candidates compete for both PwD-reserved and regular seats.
       sql += query.pwd ? ` AND c.pwd IN (0, 1)` : ` AND c.pwd = 0`;
 
-      // Quota eligibility. All-India seats are open to everyone. Other-state seats
-      // are open to anyone not domiciled in the institute's state. Home-state and
-      // the special Goa/J&K/Ladakh quotas need a matching home_state.
+      // Quota eligibility. All-India seats, and NEET's AIIMS/JIPMER open seats, are
+      // open to everyone. Other-state seats are open to anyone not domiciled in the
+      // institute's state. Home-state and the special Goa/J&K/Ladakh quotas need a
+      // matching home_state.
       sql += ` AND (
-        c.quota = 'AI'
+        c.quota IN ('AI', 'SO')
         OR (c.quota = 'OS' AND (? IS NULL OR i.state IS NULL OR i.state != ?))
         OR (c.quota = 'HS' AND i.state = ?)
         OR (c.quota IN ('GO', 'JK', 'LA') AND ? = CASE c.quota ${Object.entries(SPECIAL_QUOTA_STATES).map(([q, st]) => `WHEN '${q}' THEN '${st}'`).join(' ')} END)

@@ -3,6 +3,8 @@ const RENAMED: Record<string, string> = {
   pondicherry: 'Puducherry',
   orissa: 'Odisha',
   uttaranchal: 'Uttarakhand',
+  'delhi (nct)': 'Delhi', // MCC's spelling
+  'nct of delhi': 'Delhi',
 };
 
 /**

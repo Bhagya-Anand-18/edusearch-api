@@ -13,7 +13,9 @@
     "spec": "tsx src/scripts/generate-openapi.ts",
     "test": "DB_PATH=data/test.db tsx src/db/seed.ts && DB_PATH=data/test.db node --import tsx --test test/*.test.ts",
     "fetch:josaa": "tsx src/scripts/fetch-josaa.ts",
-    "fetch:nirf": "tsx src/scripts/fetch-nirf.ts"
+    "fetch:nirf": "tsx src/scripts/fetch-nirf.ts",
+    "fetch:nirf-placements": "tsx src/scripts/fetch-nirf-placements.ts",
+    "fetch:mcc": "tsx src/scripts/fetch-mcc.ts"
   },
   "dependencies": {
     "@fastify/cors": "^9.0.0",

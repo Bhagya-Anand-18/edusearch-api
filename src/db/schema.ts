@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS cutoffs (
     gender TEXT,
     opening_rank INTEGER,
     closing_rank INTEGER,
-    source TEXT NOT NULL,     -- 'josaa' (official) or 'synthetic'
+    source TEXT NOT NULL,     -- 'josaa' (official cutoffs) or 'mcc_derived' (ranges from official MCC allotments)
     FOREIGN KEY(program_id) REFERENCES programs(id)
 );
 
@@ -60,14 +60,18 @@ CREATE TABLE IF NOT EXISTS nirf_rankings (
 CREATE TABLE IF NOT EXISTS placements (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     institute_id INTEGER NOT NULL,
-    year INTEGER,
+    year INTEGER,             -- year the batch graduated: academic year 2023-24 -> 2024
+    academic_year TEXT,       -- as NIRF reports it, e.g. 2023-24
     program_or_dept TEXT,
+    graduating INTEGER,       -- students graduating in minimum stipulated time
+    placed INTEGER,
+    higher_studies INTEGER,   -- students selected for higher studies
     students_placed_pct REAL,
     median_salary REAL,
     average_salary REAL,
     highest_salary REAL,
-    top_recruiters TEXT, -- JSON string
-    source TEXT NOT NULL,     -- 'synthetic' until an official source is imported
+    top_recruiters TEXT,      -- JSON string; NIRF reports do not include recruiters
+    source TEXT NOT NULL,     -- 'nirf' (official institute data report)
     FOREIGN KEY(institute_id) REFERENCES institutes(id)
 );
 

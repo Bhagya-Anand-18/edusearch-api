@@ -76,3 +76,22 @@ export const STATE_OVERRIDES: Record<string, string> = {
   'National Institute of Technology, Mizoram': 'Mizoram',
   'National Institute of Technology, Uttarakhand': 'Uttarakhand',
 };
+
+/**
+ * MCC identities of the medical colleges in KNOWN_INSTITUTES, so their curated
+ * metadata and MCC's cutoffs land on one record. Matched on PIN code plus a
+ * name pattern against MCC's institute text.
+ */
+export const KNOWN_MEDICAL_MCC: Record<string, { pin: string; name: RegExp }> = {
+  'All India Institute of Medical Sciences New Delhi': { pin: '110029', name: /^AIIMS, New Delhi/i },
+  'Jawaharlal Institute of Postgraduate Medical Education and Research': { pin: '605006', name: /^JIPMER PUDUCHERRY/i },
+  'All India Institute of Medical Sciences Bhopal': { pin: '462020', name: /^AIIMS-Bhopal/i },
+  'King George Medical University': { pin: '226003', name: /^(KGMC, LUCKNOW|FACULTY OF DEN SCI, KG MED UNIV)/i },
+  'Maulana Azad Medical College': { pin: '110002', name: /^Maulana Azad Medical College/i },
+  'Grant Medical College': { pin: '400008', name: /^GRANT MEDICAL COLL/i },
+  'Madras Medical College': { pin: '600003', name: /^MADRAS MEDICAL COLLEGE/i },
+  'B. J. Medical College': { pin: '380016', name: /^B\.J\. MEDICAL COLLEGE, AHMEDABAD/i },
+  'Seth GS Medical College': { pin: '400012', name: /^SETH G\.S\. MEDICAL COLLEGE/i },
+  // Christian Medical College Vellore is a minority institution outside MCC's
+  // all-India quota, so it has no MCC entry.
+};

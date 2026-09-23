@@ -46,8 +46,24 @@ const routeSchema = {
           last_updated: { type: 'string', description: 'ISO 8601 timestamp of when this response was generated.' },
           data_source: {
             type: 'string',
-            enum: ['synthetic', 'official'],
-            description: 'Where the data comes from. "synthetic" means generated sample data, not official figures.',
+            enum: ['synthetic', 'official', 'mixed'],
+            description: 'Overall provenance: "mixed" means some datasets are official and some synthetic. See `sources` for the breakdown.',
+          },
+          sources: {
+            type: 'array',
+            description: 'Record counts per dataset and source, so consumers can see exactly which data is official.',
+            items: {
+              type: 'object',
+              properties: {
+                dataset: { type: 'string', description: 'cutoffs, nirf_rankings, placements or exam_stats.' },
+                exam: { type: 'string', nullable: true, description: 'Exam, for cutoff records.' },
+                source: { type: 'string', description: 'josaa, nirf or synthetic.' },
+                official: { type: 'boolean', description: 'True when the records come from an official source.' },
+                records: { type: 'integer', description: 'Number of records.' },
+                year_from: { type: 'integer', nullable: true, description: 'Earliest year covered.' },
+                year_to: { type: 'integer', nullable: true, description: 'Latest year covered.' },
+              },
+            },
           },
           data_notice: { type: 'string', description: 'Plain-language caveat about the data source.' },
         },
@@ -72,6 +88,13 @@ export default async function(fastify: FastifyInstance) {
     const yearRange = db.prepare(`SELECT MIN(year) as min_year, MAX(year) as max_year FROM cutoffs`).get() as any;
     const instituteTypes = db.prepare(`SELECT type, COUNT(*) as count FROM institutes GROUP BY type ORDER BY count DESC`).all();
 
+    const sources = db.prepare(`
+      SELECT 'cutoffs' as dataset, exam, source, COUNT(*) as records, MIN(year) as year_from, MAX(year) as year_to FROM cutoffs GROUP BY exam, source
+      UNION ALL SELECT 'nirf_rankings', NULL, source, COUNT(*), MIN(year), MAX(year) FROM nirf_rankings GROUP BY source
+      UNION ALL SELECT 'placements', NULL, source, COUNT(*), MIN(year), MAX(year) FROM placements GROUP BY source
+      UNION ALL SELECT 'exam_stats', NULL, source, COUNT(*), MIN(year), MAX(year) FROM exam_stats GROUP BY source
+    `).all().map((row: any) => ({ ...row, official: row.source !== 'synthetic' }));
+
     const endTime = process.hrtime.bigint();
     reply.header('x-response-time', `${Number(endTime - startTime) / 1e6}ms`);
 
@@ -88,6 +111,7 @@ export default async function(fastify: FastifyInstance) {
         institute_breakdown: instituteTypes,
         last_updated: new Date().toISOString(),
         data_source: DATA_PROVENANCE.source,
+        sources,
         data_notice: DATA_PROVENANCE.notice,
       }
     };

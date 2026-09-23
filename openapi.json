@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "EduSearch API",
-    "description": "Indian education data API — JEE/NEET cutoffs, NIRF rankings, college data, placements, and admission predictions.\n\n**Sample data: every cutoff, ranking, placement and exam statistic is synthetically generated to demonstrate the API and does not reflect official JoSAA, MCC or NIRF figures. Do not use it for admission decisions.**",
+    "description": "Indian education data API — JEE/NEET cutoffs, NIRF rankings, college data, placements, and admission predictions.\n\n**JEE Advanced and JEE Main cutoffs (JoSAA, 2022-2025) and NIRF rankings (2023-2025) are official. NEET cutoffs, placement figures and exam statistics are synthetic sample data, marked source: \"synthetic\" on every record; do not use those for admission decisions.**",
     "version": "1.0.0",
     "contact": {
       "name": "EduSearch API"
@@ -100,7 +100,7 @@
         "tags": [
           "Cutoffs"
         ],
-        "description": "Returns historical opening and closing ranks for JEE Advanced, JEE Main and NEET, joined with the program and institute they belong to. Combine filters freely — for example `?exam=jee_advanced&year=2025&category=general&institute=IIT Bombay`. Results are ordered by closing rank ascending, so the most competitive seats come first.",
+        "description": "Returns historical opening and closing ranks, joined with the program and institute they belong to. JEE Advanced and JEE Main cutoffs are official JoSAA figures for 2022-2025 (round 1 and the final round of each year); NEET cutoffs are synthetic sample data. Every record says which in its `source` field. Combine filters freely — for example `?exam=jee_advanced&year=2025&category=general&institute=IIT Bombay&quota=AI`. Results are ordered by closing rank ascending, so the most competitive seats come first.",
         "parameters": [
           {
             "schema": {
@@ -172,6 +172,45 @@
           },
           {
             "schema": {
+              "type": "string",
+              "enum": [
+                "AI",
+                "HS",
+                "OS",
+                "GO",
+                "JK",
+                "LA"
+              ]
+            },
+            "in": "query",
+            "name": "quota",
+            "required": false,
+            "description": "JoSAA quota: AI (all India), HS (home state), OS (other state), GO/JK/LA (Goa, Jammu and Kashmir, Ladakh)."
+          },
+          {
+            "schema": {
+              "type": "boolean"
+            },
+            "in": "query",
+            "name": "pwd",
+            "required": false,
+            "description": "true for only PwD-reserved seats, false to exclude them."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "josaa",
+                "synthetic"
+              ]
+            },
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "description": "Restrict to official JoSAA records or to synthetic sample records."
+          },
+          {
+            "schema": {
               "type": "integer",
               "minimum": 1,
               "maximum": 200,
@@ -236,10 +275,23 @@
                             "nullable": true,
                             "description": "Counselling round number."
                           },
+                          "is_final_round": {
+                            "type": "boolean",
+                            "description": "True when this is the year's last counselling round, whose closing rank is the definitive one."
+                          },
+                          "quota": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "JoSAA quota: AI (all India), HS (home state), OS (other state), or GO/JK/LA (Goa, Jammu and Kashmir, Ladakh)."
+                          },
                           "category": {
                             "type": "string",
                             "nullable": true,
-                            "description": "Reservation category: general, obc, sc, st or ews."
+                            "description": "Reservation category: general, ews, obc, sc or st."
+                          },
+                          "pwd": {
+                            "type": "boolean",
+                            "description": "True for seats reserved for persons with disabilities."
                           },
                           "gender": {
                             "type": "string",
@@ -249,12 +301,16 @@
                           "opening_rank": {
                             "type": "integer",
                             "nullable": true,
-                            "description": "Best rank admitted in this round."
+                            "description": "Best rank admitted in this round. Category rank for non-general categories."
                           },
                           "closing_rank": {
                             "type": "integer",
                             "nullable": true,
-                            "description": "Last rank admitted in this round — the number most consumers filter on."
+                            "description": "Last rank admitted in this round — the number most consumers filter on. Category rank for non-general categories."
+                          },
+                          "source": {
+                            "type": "string",
+                            "description": "Where this record comes from: \"josaa\" for official data, or \"synthetic\" for generated sample data."
                           },
                           "program_name": {
                             "type": "string",
@@ -409,7 +465,7 @@
             "in": "query",
             "name": "state",
             "required": false,
-            "description": "Exact state name, e.g. \"Maharashtra\"."
+            "description": "State name, e.g. \"Maharashtra\". Case and \"&\" versus \"and\" do not matter."
           },
           {
             "schema": {
@@ -531,12 +587,17 @@
                           "nirf_rank": {
                             "type": "integer",
                             "nullable": true,
-                            "description": "Most recent NIRF rank, or null if unranked."
+                            "description": "Most recent official NIRF rank in its category, or null if outside the published list."
                           },
                           "nirf_score": {
                             "type": "number",
                             "nullable": true,
-                            "description": "Most recent NIRF score out of 100."
+                            "description": "Most recent official NIRF score out of 100."
+                          },
+                          "nirf_category": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "NIRF ranking category the rank belongs to: engineering or medical."
                           },
                           "website": {
                             "type": "string",
@@ -719,12 +780,17 @@
                             "nirf_rank": {
                               "type": "integer",
                               "nullable": true,
-                              "description": "Most recent NIRF rank, or null if unranked."
+                              "description": "Most recent official NIRF rank in its category, or null if outside the published list."
                             },
                             "nirf_score": {
                               "type": "number",
                               "nullable": true,
-                              "description": "Most recent NIRF score out of 100."
+                              "description": "Most recent official NIRF score out of 100."
+                            },
+                            "nirf_category": {
+                              "type": "string",
+                              "nullable": true,
+                              "description": "NIRF ranking category the rank belongs to: engineering or medical."
                             },
                             "website": {
                               "type": "string",
@@ -844,6 +910,15 @@
                                 "nullable": true,
                                 "description": "Perception sub-score."
                               },
+                              "nirf_id": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "NIRF's own identifier for the institute, e.g. IR-E-U-0456."
+                              },
+                              "source": {
+                                "type": "string",
+                                "description": "Where this record comes from: \"nirf\" for official data, or \"synthetic\" for generated sample data."
+                              },
                               "institute_name": {
                                 "type": "string",
                                 "nullable": true,
@@ -916,6 +991,10 @@
                                 "type": "string",
                                 "nullable": true,
                                 "description": "JSON-encoded array of recruiter names."
+                              },
+                              "source": {
+                                "type": "string",
+                                "description": "Where this record comes from. Currently always \"synthetic\" (generated sample data): no official placement source is imported yet."
                               }
                             }
                           },
@@ -1121,6 +1200,10 @@
                             "type": "string",
                             "nullable": true,
                             "description": "JSON-encoded array of recruiter names."
+                          },
+                          "source": {
+                            "type": "string",
+                            "description": "Where this record comes from. Currently always \"synthetic\" (generated sample data): no official placement source is imported yet."
                           }
                         }
                       },
@@ -1289,10 +1372,23 @@
                             "nullable": true,
                             "description": "Counselling round number."
                           },
+                          "is_final_round": {
+                            "type": "boolean",
+                            "description": "True when this is the year's last counselling round, whose closing rank is the definitive one."
+                          },
+                          "quota": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "JoSAA quota: AI (all India), HS (home state), OS (other state), or GO/JK/LA (Goa, Jammu and Kashmir, Ladakh)."
+                          },
                           "category": {
                             "type": "string",
                             "nullable": true,
-                            "description": "Reservation category: general, obc, sc, st or ews."
+                            "description": "Reservation category: general, ews, obc, sc or st."
+                          },
+                          "pwd": {
+                            "type": "boolean",
+                            "description": "True for seats reserved for persons with disabilities."
                           },
                           "gender": {
                             "type": "string",
@@ -1302,12 +1398,16 @@
                           "opening_rank": {
                             "type": "integer",
                             "nullable": true,
-                            "description": "Best rank admitted in this round."
+                            "description": "Best rank admitted in this round. Category rank for non-general categories."
                           },
                           "closing_rank": {
                             "type": "integer",
                             "nullable": true,
-                            "description": "Last rank admitted in this round — the number most consumers filter on."
+                            "description": "Last rank admitted in this round — the number most consumers filter on. Category rank for non-general categories."
+                          },
+                          "source": {
+                            "type": "string",
+                            "description": "Where this record comes from: \"josaa\" for official data, or \"synthetic\" for generated sample data."
                           },
                           "program_name": {
                             "type": "string",
@@ -1538,6 +1638,15 @@
                             "nullable": true,
                             "description": "Perception sub-score."
                           },
+                          "nirf_id": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "NIRF's own identifier for the institute, e.g. IR-E-U-0456."
+                          },
+                          "source": {
+                            "type": "string",
+                            "description": "Where this record comes from: \"nirf\" for official data, or \"synthetic\" for generated sample data."
+                          },
                           "institute_name": {
                             "type": "string",
                             "nullable": true,
@@ -1754,6 +1863,10 @@
                             "type": "number",
                             "nullable": true,
                             "description": "Average score across candidates."
+                          },
+                          "source": {
+                            "type": "string",
+                            "description": "Where this record comes from. Currently always \"synthetic\" (generated sample data): no official exam statistics are imported yet."
                           }
                         }
                       },
@@ -1841,7 +1954,7 @@
         "tags": [
           "Predict"
         ],
-        "description": "The flagship endpoint. Give it an exam, a rank and a category, and it returns every program the candidate has a realistic shot at, each with a confidence percentage derived from the most recent year of opening and closing ranks, plus a year-over-year trend. Results are sorted by confidence, then by NIRF rank. Optional filters narrow the list to a preferred state, institute type or branch.",
+        "description": "The flagship endpoint. Give it an exam, a rank and a category, and it returns every program the candidate has a realistic shot at, each with a confidence percentage derived from the most recent year of opening and closing ranks, plus a year-over-year trend. Each program appears once, scored on the round, quota and seat pool that give the candidate the best chance. Results are sorted by confidence, then by NIRF rank.\n\nJEE predictions use official JoSAA cutoffs. NEET predictions use synthetic sample cutoffs and say so in each result's `source` field.\n\nPass `home_state` to include home-state (HS) quota seats at institutes in that state; without it, predictions use all-India (AI) and other-state (OS) seats only. Home-state eligibility is matched on the institute's own state; a few institutes extend their HS quota to neighbouring states or union territories, which this does not model.",
         "parameters": [
           {
             "schema": {
@@ -1865,7 +1978,7 @@
             "in": "query",
             "name": "rank",
             "required": true,
-            "description": "The candidate's rank in that exam, e.g. 500."
+            "description": "The candidate's rank, e.g. 500. Use the common rank list (CRL) rank for general, and the category rank for ews, obc, sc and st — that is how JoSAA publishes category cutoffs."
           },
           {
             "schema": {
@@ -1895,6 +2008,24 @@
             "name": "gender",
             "required": false,
             "description": "Include female-only seats when set to female."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "home_state",
+            "required": false,
+            "description": "The candidate's state of domicile, e.g. \"Kerala\". Enables home-state quota seats in that state, and the Goa, Jammu and Kashmir or Ladakh quotas where they apply."
+          },
+          {
+            "schema": {
+              "type": "boolean"
+            },
+            "in": "query",
+            "name": "pwd",
+            "required": false,
+            "description": "Set to true for candidates eligible for PwD-reserved seats; they are then considered alongside regular seats. For PwD seats the rank is the PwD rank."
           },
           {
             "schema": {
@@ -1981,12 +2112,17 @@
                                   "nirf_rank": {
                                     "type": "integer",
                                     "nullable": true,
-                                    "description": "Most recent NIRF rank, or null if unranked."
+                                    "description": "Most recent official NIRF rank in its category, or null if outside the published list."
                                   },
                                   "nirf_score": {
                                     "type": "number",
                                     "nullable": true,
-                                    "description": "Most recent NIRF score out of 100."
+                                    "description": "Most recent official NIRF score out of 100."
+                                  },
+                                  "nirf_category": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "NIRF ranking category the rank belongs to: engineering or medical."
                                   },
                                   "website": {
                                     "type": "string",
@@ -2057,13 +2193,26 @@
                                 "nullable": true,
                                 "description": "Counselling round the closing rank comes from."
                               },
+                              "quota": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Quota the prediction is based on: AI, HS, OS, GO, JK or LA."
+                              },
+                              "pwd": {
+                                "type": "boolean",
+                                "description": "True when the prediction is based on a PwD-reserved seat."
+                              },
                               "seat_pool": {
                                 "type": "string",
                                 "description": "Seat pool the prediction is based on: gender_neutral, or female_only when gender=female gives a better chance."
                               },
+                              "source": {
+                                "type": "string",
+                                "description": "Where this record comes from: \"josaa\" for official data, or \"synthetic\" for generated sample data."
+                              },
                               "trend": {
                                 "type": "string",
-                                "description": "How the closing rank moved year over year: improving, stable or declining."
+                                "description": "How the closing rank moved against the same round, quota and pool a year earlier, from the candidate's point of view: improving (closing rank rose more than 5%, so easier), declining (fell more than 5%, so harder) or stable."
                               },
                               "nirf_rank": {
                                 "type": "integer",
@@ -2089,6 +2238,15 @@
                             "category": {
                               "type": "string",
                               "description": "Category that was queried."
+                            },
+                            "year": {
+                              "type": "integer",
+                              "description": "Admission year whose cutoffs the predictions are based on."
+                            },
+                            "home_state": {
+                              "type": "string",
+                              "nullable": true,
+                              "description": "Home state used for quota eligibility, normalized."
                             }
                           }
                         },
@@ -2246,12 +2404,17 @@
                               "nirf_rank": {
                                 "type": "integer",
                                 "nullable": true,
-                                "description": "Most recent NIRF rank, or null if unranked."
+                                "description": "Most recent official NIRF rank in its category, or null if outside the published list."
                               },
                               "nirf_score": {
                                 "type": "number",
                                 "nullable": true,
-                                "description": "Most recent NIRF score out of 100."
+                                "description": "Most recent official NIRF score out of 100."
+                              },
+                              "nirf_category": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "NIRF ranking category the rank belongs to: engineering or medical."
                               },
                               "website": {
                                 "type": "string",
@@ -2468,12 +2631,17 @@
                                   "nirf_rank": {
                                     "type": "integer",
                                     "nullable": true,
-                                    "description": "Most recent NIRF rank, or null if unranked."
+                                    "description": "Most recent official NIRF rank in its category, or null if outside the published list."
                                   },
                                   "nirf_score": {
                                     "type": "number",
                                     "nullable": true,
-                                    "description": "Most recent NIRF score out of 100."
+                                    "description": "Most recent official NIRF score out of 100."
+                                  },
+                                  "nirf_category": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "NIRF ranking category the rank belongs to: engineering or medical."
                                   },
                                   "website": {
                                     "type": "string",
@@ -2591,6 +2759,15 @@
                                     "nullable": true,
                                     "description": "Perception sub-score."
                                   },
+                                  "nirf_id": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "NIRF's own identifier for the institute, e.g. IR-E-U-0456."
+                                  },
+                                  "source": {
+                                    "type": "string",
+                                    "description": "Where this record comes from: \"nirf\" for official data, or \"synthetic\" for generated sample data."
+                                  },
                                   "institute_name": {
                                     "type": "string",
                                     "nullable": true,
@@ -2661,6 +2838,10 @@
                                     "type": "string",
                                     "nullable": true,
                                     "description": "JSON-encoded array of recruiter names."
+                                  },
+                                  "source": {
+                                    "type": "string",
+                                    "description": "Where this record comes from. Currently always \"synthetic\" (generated sample data): no official placement source is imported yet."
                                   }
                                 },
                                 "nullable": true,
@@ -2878,9 +3059,50 @@
                           "type": "string",
                           "enum": [
                             "synthetic",
-                            "official"
+                            "official",
+                            "mixed"
                           ],
-                          "description": "Where the data comes from. \"synthetic\" means generated sample data, not official figures."
+                          "description": "Overall provenance: \"mixed\" means some datasets are official and some synthetic. See `sources` for the breakdown."
+                        },
+                        "sources": {
+                          "type": "array",
+                          "description": "Record counts per dataset and source, so consumers can see exactly which data is official.",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "dataset": {
+                                "type": "string",
+                                "description": "cutoffs, nirf_rankings, placements or exam_stats."
+                              },
+                              "exam": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Exam, for cutoff records."
+                              },
+                              "source": {
+                                "type": "string",
+                                "description": "josaa, nirf or synthetic."
+                              },
+                              "official": {
+                                "type": "boolean",
+                                "description": "True when the records come from an official source."
+                              },
+                              "records": {
+                                "type": "integer",
+                                "description": "Number of records."
+                              },
+                              "year_from": {
+                                "type": "integer",
+                                "nullable": true,
+                                "description": "Earliest year covered."
+                              },
+                              "year_to": {
+                                "type": "integer",
+                                "nullable": true,
+                                "description": "Latest year covered."
+                              }
+                            }
+                          }
                         },
                         "data_notice": {
                           "type": "string",

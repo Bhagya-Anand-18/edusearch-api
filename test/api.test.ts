@@ -53,8 +53,8 @@ test('colleges and rankings report real totals', async () => {
 
 test('response schemas keep every column, including joined ones', async () => {
   const { body } = await get('/api/v1/cutoffs?limit=1');
-  for (const key of ['id', 'program_id', 'exam', 'year', 'round', 'category', 'gender',
-    'opening_rank', 'closing_rank', 'program_name', 'degree', 'institute_name', 'institute_short_name']) {
+  for (const key of ['id', 'program_id', 'exam', 'year', 'round', 'is_final_round', 'quota', 'category', 'pwd', 'gender',
+    'opening_rank', 'closing_rank', 'source', 'program_name', 'degree', 'institute_name', 'institute_short_name']) {
     assert.ok(key in body.data[0], `missing ${key}`);
   }
 });
@@ -62,7 +62,9 @@ test('response schemas keep every column, including joined ones', async () => {
 for (const exam of ['jee_advanced', 'jee_main', 'neet']) {
   for (const category of ['general', 'ews', 'obc', 'sc', 'st']) {
     test(`predict ${exam}/${category} returns results with one entry per program`, async () => {
-      const rank = exam === 'neet' ? 3000 : 5000;
+      // Category ranks: real 2025 IIT closing ranks top out near 2,100 for ST,
+      // so a rank of 1000 must find seats in every category.
+      const rank = { jee_advanced: 1000, jee_main: 5000, neet: 3000 }[exam];
       const { status, body } = await get(`/api/v1/predict?exam=${exam}&rank=${rank}&category=${category}`);
       assert.equal(status, 200);
       const ids = body.data.predictions.map((p: any) => p.program.id);
@@ -111,13 +113,92 @@ test('not-found responses use the error envelope', async () => {
   assert.equal(compare.body.success, false);
 });
 
-test('stats and index disclose that the data is synthetic', async () => {
+test('stats reports provenance per dataset', async () => {
   const stats = await get('/api/v1/stats');
-  assert.equal(stats.body.data.data_source, 'synthetic');
+  assert.equal(stats.body.data.data_source, 'mixed');
   assert.ok(stats.body.data.data_notice.length > 0);
 
+  const find = (dataset: string, exam: string | null = null) =>
+    stats.body.data.sources.filter((s: any) => s.dataset === dataset && s.exam === exam);
+  assert.deepEqual(find('cutoffs', 'jee_advanced').map((s: any) => s.source), ['josaa']);
+  assert.deepEqual(find('cutoffs', 'jee_main').map((s: any) => s.source), ['josaa']);
+  assert.deepEqual(find('cutoffs', 'neet').map((s: any) => s.source), ['synthetic']);
+  assert.deepEqual(find('nirf_rankings').map((s: any) => s.official), [true]);
+  assert.deepEqual(find('placements').map((s: any) => s.official), [false]);
+
   const index = await get('/');
-  assert.equal(index.body.data_source, 'synthetic');
+  assert.equal(index.body.data_source, 'mixed');
+});
+
+test('every cutoff record carries its source', async () => {
+  const jee = await get('/api/v1/cutoffs?exam=jee_main&limit=200');
+  assert.ok(jee.body.data.every((r: any) => r.source === 'josaa'));
+  const neet = await get('/api/v1/cutoffs?exam=neet&limit=200');
+  assert.ok(neet.body.data.every((r: any) => r.source === 'synthetic'));
+  const neetPredictions = await get('/api/v1/predict?exam=neet&rank=3000&category=general');
+  assert.ok(neetPredictions.body.data.predictions.every((p: any) => p.source === 'synthetic'));
+});
+
+// Values checked by hand against the official pages, so a broken importer or
+// seed shows up as a wrong number rather than passing unnoticed.
+test('JoSAA cutoffs match the official archive', async () => {
+  const { body } = await get(
+    '/api/v1/cutoffs?institute=IIT Bhubaneswar&program=Civil Engineering&year=2025&round=6&quota=AI&category=general&gender=neutral&pwd=false'
+  );
+  assert.equal(body.meta.total, 1);
+  assert.equal(body.data[0].opening_rank, 10922);
+  assert.equal(body.data[0].closing_rank, 16156);
+  assert.equal(body.data[0].is_final_round, true);
+});
+
+test('NIRF rankings match nirfindia.org and stop at the last published year', async () => {
+  const { body } = await get('/api/v1/rankings/nirf?category=engineering&limit=1');
+  const top = body.data[0];
+  assert.equal(top.year, 2025);
+  assert.equal(top.short_name, 'IIT Madras');
+  assert.equal(top.rank, 1);
+  assert.equal(top.score, 88.72);
+  assert.equal(top.tlr_score, 95.7);
+
+  const unpublished = await get('/api/v1/rankings/nirf?year=2026');
+  assert.equal(unpublished.body.meta.total, 0);
+});
+
+test('NIRF rankings are matched by city as well as name', async () => {
+  // NIRF uses the bare name "Christian Medical College" for both Vellore and Ludhiana.
+  const { body } = await get('/api/v1/search?q=Christian Medical');
+  const vellore = body.data.institutes.find((i: any) => i.short_name === 'CMC Vellore');
+  const detail = await get(`/api/v1/colleges/${vellore.id}`);
+  const ids = new Set(detail.body.data.nirf_rankings.map((n: any) => n.nirf_id));
+  assert.equal(ids.size, 1, 'rankings from more than one NIRF institute were attached');
+});
+
+test('predict only offers home-state seats in the home state', async () => {
+  const kerala = await get('/api/v1/predict?exam=jee_main&rank=20000&category=general&home_state=kerala');
+  assert.equal(kerala.body.data.query.home_state, 'Kerala');
+  const predictions = kerala.body.data.predictions;
+  const hs = predictions.filter((p: any) => p.quota === 'HS');
+  assert.ok(hs.length > 0);
+  assert.ok(hs.every((p: any) => p.institute.state === 'Kerala'));
+  assert.ok(!predictions.some((p: any) => p.quota === 'OS' && p.institute.state === 'Kerala'));
+
+  const anywhere = await get('/api/v1/predict?exam=jee_main&rank=20000&category=general');
+  assert.ok(!anywhere.body.data.predictions.some((p: any) => p.quota === 'HS'));
+});
+
+test('predict uses PwD seats only for PwD candidates', async () => {
+  const regular = await get('/api/v1/predict?exam=jee_advanced&rank=300&category=general');
+  assert.ok(regular.body.data.predictions.every((p: any) => p.pwd === false));
+
+  const pwd = await get('/api/v1/predict?exam=jee_advanced&rank=300&category=general&pwd=true');
+  assert.ok(pwd.body.data.predictions.some((p: any) => p.pwd === true));
+});
+
+test('state filters ignore case and "&" versus "and"', async () => {
+  const a = await get('/api/v1/colleges?state=jammu %26 kashmir');
+  const b = await get('/api/v1/colleges?state=Jammu and Kashmir');
+  assert.ok(a.body.meta.total > 0);
+  assert.equal(a.body.meta.total, b.body.meta.total);
 });
 
 test('committed openapi.json matches the route schemas (run `npm run spec` if this fails)', async () => {

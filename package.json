@@ -11,7 +11,9 @@
     "start": "node dist/index.js",
     "seed": "tsx src/db/seed.ts",
     "spec": "tsx src/scripts/generate-openapi.ts",
-    "test": "DB_PATH=data/test.db tsx src/db/seed.ts && DB_PATH=data/test.db node --import tsx --test test/*.test.ts"
+    "test": "DB_PATH=data/test.db tsx src/db/seed.ts && DB_PATH=data/test.db node --import tsx --test test/*.test.ts",
+    "fetch:josaa": "tsx src/scripts/fetch-josaa.ts",
+    "fetch:nirf": "tsx src/scripts/fetch-nirf.ts"
   },
   "dependencies": {
     "@fastify/cors": "^9.0.0",

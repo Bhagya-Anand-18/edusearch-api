@@ -6,8 +6,9 @@ CREATE TABLE IF NOT EXISTS institutes (
     type TEXT,
     state TEXT,
     city TEXT,
-    nirf_rank INTEGER,
+    nirf_rank INTEGER,        -- latest official NIRF rank in its category, if ranked
     nirf_score REAL,
+    nirf_category TEXT,       -- 'engineering' or 'medical'
     website TEXT,
     established_year INTEGER
 );
@@ -28,10 +29,14 @@ CREATE TABLE IF NOT EXISTS cutoffs (
     exam TEXT,
     year INTEGER,
     round INTEGER,
+    is_final_round INTEGER NOT NULL DEFAULT 0, -- 1 when this is the year's last round
+    quota TEXT,               -- JoSAA quota: AI, HS, OS, GO, JK or LA
     category TEXT,
+    pwd INTEGER NOT NULL DEFAULT 0, -- 1 for seats reserved for persons with disabilities
     gender TEXT,
     opening_rank INTEGER,
     closing_rank INTEGER,
+    source TEXT NOT NULL,     -- 'josaa' (official) or 'synthetic'
     FOREIGN KEY(program_id) REFERENCES programs(id)
 );
 
@@ -47,6 +52,8 @@ CREATE TABLE IF NOT EXISTS nirf_rankings (
     go_score REAL,
     oi_score REAL,
     perception_score REAL,
+    nirf_id TEXT,             -- NIRF's own institute ID, e.g. IR-E-U-0456
+    source TEXT NOT NULL,     -- 'nirf' (official) or 'synthetic'
     FOREIGN KEY(institute_id) REFERENCES institutes(id)
 );
 
@@ -60,6 +67,7 @@ CREATE TABLE IF NOT EXISTS placements (
     average_salary REAL,
     highest_salary REAL,
     top_recruiters TEXT, -- JSON string
+    source TEXT NOT NULL,     -- 'synthetic' until an official source is imported
     FOREIGN KEY(institute_id) REFERENCES institutes(id)
 );
 
@@ -72,11 +80,13 @@ CREATE TABLE IF NOT EXISTS exam_stats (
     total_qualified INTEGER,
     max_score REAL,
     min_qualifying_score REAL,
-    avg_score REAL
+    avg_score REAL,
+    source TEXT NOT NULL      -- 'synthetic' until an official source is imported
 );
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_cutoffs_exam_year_cat ON cutoffs(exam, year, category);
+CREATE INDEX IF NOT EXISTS idx_cutoffs_program ON cutoffs(program_id, exam, category, year);
 CREATE INDEX IF NOT EXISTS idx_nirf_inst_year ON nirf_rankings(institute_id, year);
 CREATE INDEX IF NOT EXISTS idx_programs_inst ON programs(institute_id);
 CREATE INDEX IF NOT EXISTS idx_placements_inst_year ON placements(institute_id, year);

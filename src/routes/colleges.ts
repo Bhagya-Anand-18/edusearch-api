@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { db } from '../db/database.js';
 import { envelope, envelopeSingle, errorEnvelope } from '../utils/envelope.js';
+import { canonicalState } from '../utils/states.js';
 import {
   instituteSchema,
   programSchema,
@@ -61,7 +62,7 @@ const listRouteSchema = {
         enum: ['IIT', 'NIT', 'IIIT', 'GFTI', 'Medical'],
         description: 'Restrict to one institute category.',
       },
-      state: { type: 'string', description: 'Exact state name, e.g. "Maharashtra".' },
+      state: { type: 'string', description: 'State name, e.g. "Maharashtra". Case and "&" versus "and" do not matter.' },
       city: { type: 'string', description: 'Exact city name, e.g. "Mumbai".' },
       search: { type: 'string', description: 'Partial match against the full name or abbreviation.' },
       nirf_rank_min: { type: 'integer', minimum: 1, description: 'Only institutes ranked at or below this number (worse than or equal to).' },
@@ -164,7 +165,7 @@ export default async function(fastify: FastifyInstance) {
       }
       if (query.state) {
         where += ` AND i.state = ?`;
-        params.push(query.state);
+        params.push(canonicalState(query.state));
       }
       if (query.city) {
         where += ` AND i.city = ?`;

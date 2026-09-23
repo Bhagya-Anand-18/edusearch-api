@@ -12,6 +12,9 @@ const cutoffsQuerySchema = z.object({
   institute: z.string().optional(),
   program: z.string().optional(),
   round: z.coerce.number().int().optional(),
+  quota: z.enum(['AI', 'HS', 'OS', 'GO', 'JK', 'LA']).optional(),
+  pwd: z.boolean().optional(), // Fastify has already coerced "true"/"false" per the route schema
+  source: z.enum(['josaa', 'synthetic']).optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50),
   offset: z.coerce.number().int().min(0).default(0),
 });
@@ -20,7 +23,7 @@ const routeSchema = {
   tags: ['Cutoffs'],
   summary: 'List JEE/NEET closing ranks',
   description:
-    'Returns historical opening and closing ranks for JEE Advanced, JEE Main and NEET, joined with the program and institute they belong to. Combine filters freely — for example `?exam=jee_advanced&year=2025&category=general&institute=IIT Bombay`. Results are ordered by closing rank ascending, so the most competitive seats come first.',
+    'Returns historical opening and closing ranks, joined with the program and institute they belong to. JEE Advanced and JEE Main cutoffs are official JoSAA figures for 2022-2025 (round 1 and the final round of each year); NEET cutoffs are synthetic sample data. Every record says which in its `source` field. Combine filters freely — for example `?exam=jee_advanced&year=2025&category=general&institute=IIT Bombay&quota=AI`. Results are ordered by closing rank ascending, so the most competitive seats come first.',
   querystring: {
     type: 'object',
     properties: {
@@ -38,6 +41,17 @@ const routeSchema = {
       },
       program: { type: 'string', description: 'Partial program name, e.g. "Computer Science".' },
       round: { type: 'integer', description: 'Counselling round number.' },
+      quota: {
+        type: 'string',
+        enum: ['AI', 'HS', 'OS', 'GO', 'JK', 'LA'],
+        description: 'JoSAA quota: AI (all India), HS (home state), OS (other state), GO/JK/LA (Goa, Jammu and Kashmir, Ladakh).',
+      },
+      pwd: { type: 'boolean', description: 'true for only PwD-reserved seats, false to exclude them.' },
+      source: {
+        type: 'string',
+        enum: ['josaa', 'synthetic'],
+        description: 'Restrict to official JoSAA records or to synthetic sample records.',
+      },
       ...paginationProps,
     },
   },
@@ -85,6 +99,18 @@ export default async function(fastify: FastifyInstance) {
       if (query.round) {
         where += ` AND c.round = ?`;
         params.push(query.round);
+      }
+      if (query.quota) {
+        where += ` AND c.quota = ?`;
+        params.push(query.quota);
+      }
+      if (query.pwd !== undefined) {
+        where += ` AND c.pwd = ?`;
+        params.push(query.pwd ? 1 : 0);
+      }
+      if (query.source) {
+        where += ` AND c.source = ?`;
+        params.push(query.source);
       }
       if (query.institute) {
         if (!isNaN(Number(query.institute))) {

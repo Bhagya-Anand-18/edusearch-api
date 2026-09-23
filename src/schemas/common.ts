@@ -14,7 +14,11 @@ const int = (description: string) => ({ type: 'integer', description });
 const intNull = (description: string) => ({ type: 'integer', nullable: true, description });
 const numNull = (description: string) => ({ type: 'number', nullable: true, description });
 const str = (description: string) => ({ type: 'string', description });
+const bool = (description: string) => ({ type: 'boolean', description });
 const strNull = (description: string) => ({ type: 'string', nullable: true, description });
+
+const source = (official: string) =>
+  ({ type: 'string', description: `Where this record comes from: "${official}" for official data, or "synthetic" for generated sample data.` });
 
 const entity = (properties: Props) => ({
   type: 'object',
@@ -29,8 +33,9 @@ export const instituteSchema = entity({
   type: strNull('Institute category: IIT, NIT, IIIT, GFTI or Medical.'),
   state: strNull('State the institute is located in.'),
   city: strNull('City the institute is located in.'),
-  nirf_rank: intNull('Most recent NIRF rank, or null if unranked.'),
-  nirf_score: numNull('Most recent NIRF score out of 100.'),
+  nirf_rank: intNull('Most recent official NIRF rank in its category, or null if outside the published list.'),
+  nirf_score: numNull('Most recent official NIRF score out of 100.'),
+  nirf_category: strNull('NIRF ranking category the rank belongs to: engineering or medical.'),
   website: strNull('Official website URL.'),
   established_year: intNull('Year the institute was founded.'),
 });
@@ -52,10 +57,14 @@ export const cutoffSchema = entity({
   exam: strNull('Exam the cutoff comes from: jee_advanced, jee_main or neet.'),
   year: intNull('Admission year the cutoff applies to.'),
   round: intNull('Counselling round number.'),
-  category: strNull('Reservation category: general, obc, sc, st or ews.'),
+  is_final_round: bool("True when this is the year's last counselling round, whose closing rank is the definitive one."),
+  quota: strNull('JoSAA quota: AI (all India), HS (home state), OS (other state), or GO/JK/LA (Goa, Jammu and Kashmir, Ladakh).'),
+  category: strNull('Reservation category: general, ews, obc, sc or st.'),
+  pwd: bool('True for seats reserved for persons with disabilities.'),
   gender: strNull('Gender pool: neutral or female.'),
-  opening_rank: intNull('Best rank admitted in this round.'),
-  closing_rank: intNull('Last rank admitted in this round — the number most consumers filter on.'),
+  opening_rank: intNull('Best rank admitted in this round. Category rank for non-general categories.'),
+  closing_rank: intNull('Last rank admitted in this round — the number most consumers filter on. Category rank for non-general categories.'),
+  source: source('josaa'),
   program_name: strNull('Program name, joined in for convenience.'),
   degree: strNull('Degree awarded, joined in for convenience.'),
   institute_name: strNull('Full institute name, joined in for convenience.'),
@@ -74,6 +83,8 @@ export const nirfRankingSchema = entity({
   go_score: numNull('Graduation Outcomes sub-score.'),
   oi_score: numNull('Outreach and Inclusivity sub-score.'),
   perception_score: numNull('Perception sub-score.'),
+  nirf_id: strNull("NIRF's own identifier for the institute, e.g. IR-E-U-0456."),
+  source: source('nirf'),
   institute_name: strNull('Full institute name, joined in for convenience.'),
   short_name: strNull('Institute abbreviation, joined in for convenience.'),
   type: strNull('Institute category, joined in for convenience.'),
@@ -90,6 +101,7 @@ export const placementSchema = entity({
   average_salary: numNull('Average annual package in INR.'),
   highest_salary: numNull('Highest annual package in INR.'),
   top_recruiters: strNull('JSON-encoded array of recruiter names.'),
+  source: str('Where this record comes from. Currently always "synthetic" (generated sample data): no official placement source is imported yet.'),
 });
 
 export const examStatSchema = entity({
@@ -102,6 +114,7 @@ export const examStatSchema = entity({
   max_score: numNull('Highest score recorded.'),
   min_qualifying_score: numNull('Minimum qualifying score.'),
   avg_score: numNull('Average score across candidates.'),
+  source: str('Where this record comes from. Currently always "synthetic" (generated sample data): no official exam statistics are imported yet.'),
 });
 
 export const predictionSchema = entity({
@@ -110,8 +123,11 @@ export const predictionSchema = entity({
   confidence_pct: int('Estimated chance of admission, 0-99, from the rank against historical opening and closing ranks. Each program appears once, scored on its most favourable round and seat pool.'),
   last_year_closing_rank: intNull('Closing rank in the most recent year on record.'),
   round: intNull('Counselling round the closing rank comes from.'),
+  quota: strNull('Quota the prediction is based on: AI, HS, OS, GO, JK or LA.'),
+  pwd: bool('True when the prediction is based on a PwD-reserved seat.'),
   seat_pool: str('Seat pool the prediction is based on: gender_neutral, or female_only when gender=female gives a better chance.'),
-  trend: str('How the closing rank moved year over year: improving, stable or declining.'),
+  source: source('josaa'),
+  trend: str('How the closing rank moved against the same round, quota and pool a year earlier, from the candidate\'s point of view: improving (closing rank rose more than 5%, so easier), declining (fell more than 5%, so harder) or stable.'),
   nirf_rank: int('NIRF rank used as the tie-breaker when confidence is equal. 9999 means unranked.'),
 });
 
